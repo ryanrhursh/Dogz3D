@@ -19,6 +19,16 @@ extends CharacterBody3D
 const MAX_REACH_HEIGHT := 0.45
 ## How far off the navmesh an item may be and still be reachable.
 const REACH_SLACK := 0.45
+## Moving dogs steer away from other dogs closer than this (flat metres).
+const SEPARATION_RADIUS := 0.65
+const SEPARATION_WEIGHT := 1.2
+## No separation this close to the destination, so friends can share a bed.
+const SEPARATION_ARRIVE_ZONE := 1.0
+## Game minutes an invitation (play) stays open.
+const INVITE_MINUTES := 4.0
+
+## Every dog in the simulation (cheaper than querying the group each physics tick).
+static var _all_dogs: Array = []
 
 ## Movement speeds up with the sim clock, but only this far, so fast-forward stays readable.
 @export var max_movement_time_scale := 6.0
@@ -38,6 +48,11 @@ var held_item: WorldItem
 var touch_zones: Dictionary = {}
 ## Items this dog has claimed a slot on (bowl it's eating from, its bed).
 var _claims: Array[WorldItem] = []
+## dog_id of the dog this one is greeting or playing with, "" if none. Others read it via
+## get_dog_info, so a game of chase only runs while both dogs point at each other.
+var social_partner_id := ""
+## Invitation kind (StringName) -> [from dog_id, SimClock.total_minutes when sent].
+var _invites: Dictionary = {}
 
 var _target := Vector3.ZERO
 var _arrive_radius := 0.3
@@ -60,6 +75,8 @@ var _emote_timer := 0.0
 
 func _ready() -> void:
 	add_to_group("dogs")
+	if not _all_dogs.has(self):
+		_all_dogs.append(self)
 	_build_placeholder()
 	var seed_value := personality_seed
 	if seed_value == 0:
@@ -95,6 +112,9 @@ func _physics_process(delta: float) -> void:
 				dir = _target - global_position
 				dir.y = 0.0
 			dir = dir.normalized()
+			var push := _separation_push()
+			if push != Vector3.ZERO:
+				dir = (dir + push * SEPARATION_WEIGHT).normalized()
 			var speed := walk_speed
 			if gait == &"run":
 				speed *= run_speed_multiplier
@@ -200,11 +220,41 @@ func find_offered_item(affordance: StringName) -> WorldItem:
 	return best
 
 
+## Nearest item with the affordance that is full, but only with dogs that are friends
+## with this one both ways (affinity >= min_affinity), and that has a share slot free.
+## Claim it with claim_item(item, true).
+func find_shared_item(affordance: StringName, min_affinity: float) -> WorldItem:
+	var best: WorldItem = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("items"):
+		var item := node as WorldItem
+		if item == null or item.held or not item.has_affordance(affordance) \
+				or not item.is_available() or not item.has_share_slot():
+			continue
+		var users := item.get_users()
+		if users.is_empty() or users.has(self):
+			continue
+		var all_friends := true
+		for user in users:
+			var other := user as Dog
+			if other == null or brain.memory.get_affinity(other.dog_id) < min_affinity \
+					or other.brain.memory.get_affinity(dog_id) < min_affinity:
+				all_friends = false
+				break
+		if not all_friends:
+			continue
+		var d := global_position.distance_squared_to(item.global_position)
+		if d < best_dist:
+			best_dist = d
+			best = item
+	return best
+
+
 ## Claims a slot on the item so other dogs look elsewhere. Release in the behavior's
-## exit(). False if another dog got there first.
-func claim_item(item: WorldItem) -> bool:
+## exit(). False if another dog got there first. `shared` may take a friend's share slot.
+func claim_item(item: WorldItem, shared: bool = false) -> bool:
 	_prune_claims()
-	if item == null or not is_instance_valid(item) or not item.reserve(self):
+	if item == null or not is_instance_valid(item) or not item.reserve(self, shared):
 		return false
 	if not _claims.has(item):
 		_claims.append(item)
@@ -228,6 +278,120 @@ func _prune_claims() -> void:
 	for i in range(_claims.size() - 1, -1, -1):
 		if not is_instance_valid(_claims[i]):
 			_claims.remove_at(i)
+
+
+# --- Other dogs (brains never touch other brains; they ask the body) ------------
+
+## dog_id of the nearest other dog within `max_dist` (flat metres) for which
+## `filter.call(info)` is true (info as from get_dog_info), or "" if none.
+func find_nearest_dog(max_dist: float, filter: Callable = Callable()) -> String:
+	var best_id := ""
+	var best_dist := max_dist
+	for other: Dog in _all_dogs:
+		if other == self or not is_instance_valid(other):
+			continue
+		var d := _flat_distance(global_position, other.global_position)
+		if d > best_dist:
+			continue
+		if filter.is_valid() and not bool(filter.call(other._info_for(self))):
+			continue
+		best_dist = d
+		best_id = other.dog_id
+	return best_id
+
+
+## What this dog can observe about another dog: id, name, position, distance,
+## doing (behavior id), sleeping, moving, mood (-1..1), partner (its social_partner_id)
+## and affinity_to_me (how it feels about this dog). Empty if there's no such dog.
+func get_dog_info(id: String) -> Dictionary:
+	var other := _dog_by_id(id)
+	if other == null:
+		return {}
+	return other._info_for(self)
+
+
+## Asks another dog to join in (`kind` e.g. &"play"). Its behaviors see it with get_invite.
+func invite_dog(id: String, kind: StringName) -> bool:
+	var other := _dog_by_id(id)
+	if other == null:
+		return false
+	other._invites[kind] = [dog_id, SimClock.total_minutes]
+	return true
+
+
+## dog_id of whoever invited this dog to `kind` in the last INVITE_MINUTES, or "".
+func get_invite(kind: StringName) -> String:
+	if not _invites.has(kind):
+		return ""
+	var entry: Array = _invites[kind]
+	if SimClock.total_minutes - float(entry[1]) > INVITE_MINUTES:
+		_invites.erase(kind)
+		return ""
+	return str(entry[0])
+
+
+func clear_invite(kind: StringName) -> void:
+	_invites.erase(kind)
+
+
+## Tells another dog something social happened between them (&"greeted", &"played").
+## That dog's body passes it to its own brain.
+func notify_dog(id: String, kind: StringName) -> void:
+	var other := _dog_by_id(id)
+	if other != null:
+		other.receive_social(dog_id, dog_name, kind)
+
+
+func receive_social(from_id: String, from_name: String, kind: StringName) -> void:
+	brain.on_social(from_id, from_name, kind)
+
+
+func set_social_partner(id: String) -> void:
+	social_partner_id = id
+
+
+func _info_for(asker: Dog) -> Dictionary:
+	var doing: StringName = &""
+	if brain.current != null:
+		doing = brain.current.id
+	return {
+		"id": dog_id,
+		"name": dog_name,
+		"position": global_position,
+		"distance": _flat_distance(global_position, asker.global_position),
+		"doing": doing,
+		"sleeping": sleeping,
+		"moving": _moving,
+		"mood": brain.mood(),
+		"partner": social_partner_id,
+		"affinity_to_me": brain.memory.get_affinity(asker.dog_id),
+	}
+
+
+func _dog_by_id(id: String) -> Dog:
+	if id == "" or id == dog_id:
+		return null
+	for other: Dog in _all_dogs:
+		if is_instance_valid(other) and other.dog_id == id:
+			return other
+	return null
+
+
+## Sum of pushes away from dogs within SEPARATION_RADIUS. Zero when no dog is that
+## close, so a lone dog moves exactly as before.
+func _separation_push() -> Vector3:
+	if _all_dogs.size() < 2 or _flat_distance(global_position, _target) < SEPARATION_ARRIVE_ZONE:
+		return Vector3.ZERO
+	var push := Vector3.ZERO
+	for other: Dog in _all_dogs:
+		if other == self or not is_instance_valid(other):
+			continue
+		var offset := global_position - other.global_position
+		offset.y = 0.0
+		var d := offset.length()
+		if d < SEPARATION_RADIUS and d > 0.001:
+			push += offset / d * (1.0 - d / SEPARATION_RADIUS)
+	return push
 
 
 ## True if the dog can walk close enough to put its mouth on `point`
@@ -285,6 +449,8 @@ func reroll_personality(seed_value: int) -> void:
 		brain.interrupt(self)
 	drop_held()
 	release_all_claims()
+	social_partner_id = ""
+	_invites.clear()
 	sleeping = false
 	set_pose(&"stand")
 	set_gait(&"walk")
@@ -302,7 +468,10 @@ func retire() -> void:
 	brain.interrupt(self)
 	drop_held()
 	release_all_claims()
+	social_partner_id = ""
+	_invites.clear()
 	remove_from_group("dogs")
+	_all_dogs.erase(self)
 	set_process(false)
 	set_physics_process(false)
 
@@ -336,6 +505,10 @@ func from_dict(data: Dictionary) -> void:
 
 
 # --- Internals -------------------------------------------------------------------
+
+func _exit_tree() -> void:
+	_all_dogs.erase(self)
+
 
 func _turn_toward(dir: Vector3, scaled_delta: float) -> void:
 	var yaw := atan2(dir.x, dir.z)

@@ -30,6 +30,9 @@ signal fill_changed(item: WorldItem)
 @export var physics_body: RigidBody3D
 ## How many dogs may use it at once (bowl 1, trough 3, big bed 2). 0 = unlimited.
 @export var max_users := 1
+## Extra slots only for dogs that are close friends with everyone already using it
+## (two friends curled up on one bed). Dogs claim them via Dog.find_shared_item.
+@export var share_slots := 0
 
 ## True while a hand or mouth carries this item.
 var held := false
@@ -80,9 +83,16 @@ func is_free_for(user: Node) -> bool:
 	return _users.size() < max_users
 
 
+## True if a friend could squeeze in: the normal slots are full, a share slot is free.
+func has_share_slot() -> bool:
+	_prune_users()
+	return max_users > 0 and share_slots > 0 and _users.size() < max_users + share_slots
+
+
 ## Claims a slot for `user` (dogs claim via Dog.claim_item). False if it's full.
-func reserve(user: Node) -> bool:
-	if not is_free_for(user):
+## `shared` allows a share slot; the caller checks the friendship first.
+func reserve(user: Node, shared: bool = false) -> bool:
+	if not is_free_for(user) and not (shared and has_share_slot()):
 		return false
 	if not _users.has(user):
 		_users.append(user)
@@ -91,6 +101,12 @@ func reserve(user: Node) -> bool:
 
 func release(user: Node) -> void:
 	_users.erase(user)
+
+
+## The nodes currently holding a slot (dogs).
+func get_users() -> Array[Node]:
+	_prune_users()
+	return _users.duplicate()
 
 
 func user_count() -> int:

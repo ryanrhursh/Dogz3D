@@ -23,6 +23,7 @@ script = ExtResource("1_item")
 display_name = "Dog bed"
 affordances = PackedStringArray("bed")
 approach_radius = 0.05
+share_slots = 1
 
 [node name="Base" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)

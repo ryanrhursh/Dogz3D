@@ -246,8 +246,16 @@ func _print_summary() -> void:
 		bond_sum += brain.memory.bond
 		mood_sum += brain.mood()
 		if dogs.size() > 1:
-			print("  %-10s %s | bond %.1f mood %+.2f" % [dog.dog_name, str(brain.choice_counts),
-					brain.memory.bond, brain.mood()])
+			var friends := 0
+			var best := 0.0
+			for other_id: String in brain.memory.relationships:
+				var a := brain.memory.get_affinity(other_id)
+				best = maxf(best, a)
+				if a >= DogMemory.FRIEND_AFFINITY:
+					friends += 1
+			print("  %-10s %s | bond %.1f mood %+.2f | knows %d friends %d best %.2f" % [
+					dog.dog_name, str(brain.choice_counts), brain.memory.bond, brain.mood(),
+					brain.memory.relationships.size(), friends, best])
 	var n := maxf(1.0, float(dogs.size()))
 	print("Behavior choices: %s" % str(total_choices))
 	var final_line := PackedStringArray()

@@ -11,8 +11,8 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 - M1 gray box: DONE (needs, utility AI, capsule dog, navmesh room, day/night, save/load,
   debug overlay).
 - M2 Pack (many dogs, selection, shared items): IN PROGRESS. See `docs/m2_pack.md`.
-  Step 1 (pack and selection) is done. NEXT: step 2, dog-to-dog behaviors (greet, play
-  together, relationships, separation).
+  Steps 1 (pack and selection) and 2 (dog to dog: separation, relationships, greet,
+  play together, bed sharing) are done. NEXT: step 3, pack scale and UI.
 - M3 Hands (close-up mode): step 1 of 5 (plumbing and test harness) is done; the rest waits
   for M2. See `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
@@ -33,7 +33,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   Behaviors touch the world only through the Dog body API in `dog/body/dog.gd`
   (go_to, go_to_item, face_point, set_pose, set_gait, find_nearest_item, find_offered_item,
   random_point_near, can_reach, pick_up, drop_held, get_mouth_position, claim_item,
-  release_item). A behavior that claims an item releases it in exit().
+  release_item, find_shared_item; for other dogs find_nearest_dog, get_dog_info,
+  invite_dog, get_invite, notify_dog, set_social_partner). A behavior that claims an item
+  releases it in exit().
 - Everything that simulates uses `SimClock.last_delta_minutes` (game minutes), never the
   raw engine delta. Movement uses real delta scaled by a capped time scale.
 - The AI reads item affordance tags (`WorldItem.affordances`), never item names.
@@ -42,6 +44,8 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 - Many dogs: never assume one dog (`$Dog`). Find dogs through the `dogs` group or the Pack
   (group `pack`). A brain never reads another dog's brain directly; dog-to-dog awareness
   goes through the body API.
+- A social behavior must score 0, and not touch `brain.rng`, when no other dog is near, so
+  the one-dog soak baseline stays exact.
 - Content is data (BreedData, and later SkillTree, BuildingData, QuestData Resources), so
   new breeds, species, skills and buildings don't need code changes where possible.
 - Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes.

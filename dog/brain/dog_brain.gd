@@ -14,6 +14,16 @@ const WanderBehavior := preload("res://dog/brain/behaviors/wander.gd")
 const ConsumeBehavior := preload("res://dog/brain/behaviors/consume.gd")
 const SleepBehavior := preload("res://dog/brain/behaviors/sleep.gd")
 const IdleBehavior := preload("res://dog/brain/behaviors/idle.gd")
+const GreetBehavior := preload("res://dog/brain/behaviors/greet.gd")
+const PlayTogetherBehavior := preload("res://dog/brain/behaviors/play_together.gd")
+
+## Affinity and affection a dog gains when another dog greets it nicely.
+const GREETED_AFFINITY := 0.05
+const GREETED_AFFECTION := 1.0
+## Other dogs only top affection up to here: they can't replace the player.
+const SOCIAL_AFFECTION_CAP := 60.0
+## Affinity lost toward a dog that pestered this one while it was grumpy.
+const BOTHERED_AFFINITY := -0.04
 
 var needs := DogNeeds.new()
 var personality := DogPersonality.new()
@@ -61,6 +71,10 @@ func setup(p_personality: DogPersonality, seed_value: int,
 		ConsumeBehavior.new(&"drink", "Drink", &"thirst", &"water", &"", &"eat"),
 		SleepBehavior.new(),
 		IdleBehavior.new(),
+		# Social behaviors go last and score 0 with no other dog near, so a lone dog
+		# decides exactly as it did before they existed.
+		GreetBehavior.new(),
+		PlayTogetherBehavior.new(),
 	]
 	planner.behaviors = list
 
@@ -119,6 +133,27 @@ func on_petted(asleep: bool) -> void:
 	needs.change(&"fun", 5.0)
 	memory.change_bond(1.5)
 	_log("petted")
+
+
+## Affection from other dogs: fills the need only up to SOCIAL_AFFECTION_CAP.
+func add_social_affection(amount: float) -> void:
+	var room := SOCIAL_AFFECTION_CAP - needs.get_value(&"affection")
+	if room > 0.0:
+		needs.change(&"affection", minf(amount, room))
+
+
+## Another dog did something social to this one (reported by the Dog body).
+func on_social(from_id: String, from_name: String, kind: StringName) -> void:
+	match kind:
+		&"greeted":
+			memory.change_affinity(from_id, GREETED_AFFINITY)
+			add_social_affection(GREETED_AFFECTION)
+			_log("greeted by %s" % from_name)
+		&"bothered":
+			memory.change_affinity(from_id, BOTHERED_AFFINITY)
+			_log("bothered by %s" % from_name)
+		_:
+			pass
 
 
 func simulate_offline(minutes: float) -> void:

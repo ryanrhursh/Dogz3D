@@ -20,6 +20,7 @@ var _score_box: VBoxContainer
 var _score_rows: Dictionary = {}
 var _items: Label
 var _traits: Label
+var _friends: Label
 var _log: Label
 var _help: Label
 var _refresh := 0.0
@@ -112,12 +113,31 @@ func _refresh_view() -> void:
 			p.energy, p.sociability, p.boldness, p.food_drive,
 			p.toy_drive, p.stubbornness, p.trainability]
 
+	_friends.text = _relationship_text(brain.memory)
+
 	var lines := PackedStringArray()
 	for i in range(brain.decision_log.size() - 1, -1, -1):
 		lines.append(brain.decision_log[i])
 		if lines.size() >= 8:
 			break
 	_log.text = "\n".join(lines)
+
+
+## Strongest feelings first (either way), up to four, named via the pack.
+func _relationship_text(memory: DogMemory) -> String:
+	if memory.relationships.is_empty():
+		return "(hasn't met anyone)"
+	var ids: Array = memory.relationships.keys()
+	ids.sort_custom(func(a: Variant, b: Variant) -> bool:
+		return absf(memory.get_affinity(str(a))) > absf(memory.get_affinity(str(b))))
+	var pack := get_tree().get_first_node_in_group("pack") as Pack
+	var parts := PackedStringArray()
+	for other_id in ids.slice(0, 4):
+		var who := str(other_id)
+		if pack != null and pack.get_dog(who) != null:
+			who = pack.get_dog(who).dog_name
+		parts.append("%s %+.2f" % [who, memory.get_affinity(str(other_id))])
+	return "   ".join(parts)
 
 
 func _build() -> void:
@@ -157,6 +177,9 @@ func _build() -> void:
 
 	_section(box, "PERSONALITY")
 	_traits = _label(box, "", 12)
+
+	_section(box, "RELATIONSHIPS")
+	_friends = _label(box, "", 12)
 
 	_section(box, "DECISIONS (newest first)")
 	_log = _label(box, "", 12)

@@ -10,7 +10,8 @@ signal loaded(path: String)
 
 const SAVE_PATH := "user://save.json"
 ## v1: milestone 1. v2: touch prefs per dog, positions of movable items.
-const SAVE_VERSION := 2
+## v3: dog-to-dog relationships in each dog's memory.
+const SAVE_VERSION := 3
 const MAX_OFFLINE_MINUTES := 8.0 * 60.0
 const AUTOSAVE_EVERY_HOURS := 3
 
@@ -72,6 +73,27 @@ func save_game(path: String = SAVE_PATH) -> bool:
 	return true
 
 
+## Upgrades an older save dictionary to SAVE_VERSION, one version step at a time.
+## Fields a step doesn't touch keep their defaults or get rolled on load.
+static func migrate(data: Dictionary) -> Dictionary:
+	var out := data.duplicate(true)
+	var version: int = int(out.get("version", 0))
+	if version < 3:
+		# v3: every dog starts with no relationships (it hasn't met the others yet).
+		var dogs: Array = out.get("dogs", [])
+		for entry in dogs:
+			var dog_data: Dictionary = entry
+			var brain: Dictionary = dog_data.get("brain", {})
+			var memory: Dictionary = brain.get("memory", {})
+			if not memory.has("relationships"):
+				memory["relationships"] = {}
+			brain["memory"] = memory
+			dog_data["brain"] = brain
+		version = 3
+	out["version"] = version
+	return out
+
+
 func load_game(path: String = SAVE_PATH) -> bool:
 	if not has_save(path):
 		return false
@@ -89,8 +111,8 @@ func load_game(path: String = SAVE_PATH) -> bool:
 	if version > SAVE_VERSION:
 		push_warning("Save version %d is newer than %d. Loading anyway." % [version, SAVE_VERSION])
 	elif version < SAVE_VERSION:
-		# Older formats load cleanly: missing fields keep defaults or get rolled.
 		print("SaveManager: upgrading save from v%d to v%d." % [version, SAVE_VERSION])
+		data = migrate(data)
 
 	var clock: Dictionary = data.get("clock", {})
 	SimClock.from_dict(clock)

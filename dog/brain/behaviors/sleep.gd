@@ -1,5 +1,5 @@
 extends DogBehavior
-## Go to the bed (or flop where it stands) and sleep. Restores energy.
+## Go to the bed (or share a close friend's, or flop where it stands) and sleep. Restores energy.
 ## At night the dog stays asleep until morning once it's rested.
 
 const ENERGY_PER_HOUR := 14.0
@@ -33,6 +33,13 @@ func enter(dog: Dog) -> void:
 	_bed = dog.find_nearest_item(&"bed")
 	if _bed != null and not dog.claim_item(_bed):
 		_bed = null
+	if _bed == null:
+		# Every bed is taken: curl up with a close friend if one is on a bed.
+		_bed = dog.find_shared_item(&"bed", DogMemory.FRIEND_AFFINITY)
+		if _bed != null and not dog.claim_item(_bed, true):
+			_bed = null
+		if _bed != null:
+			dog.show_emote("snuggle", 2.0)
 	if _bed != null:
 		dog.go_to_item(_bed)
 	else:
