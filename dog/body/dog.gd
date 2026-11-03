@@ -3,7 +3,7 @@ extends CharacterBody3D
 ## The dog's body: moves, poses, and exposes the world to the brain.
 ##
 ## The placeholder visual (capsule torso, sphere head, cone ears) is built in code
-## under $Visual. Milestone 4 replaces it with the rigged Blender model; the brain
+## under $Visual. Milestone 8 (art pass) replaces it with the rigged Blender model; the brain
 ## and body API below stay the same.
 
 @export var dog_id := "dog_1"
@@ -232,7 +232,7 @@ func get_mouth_position() -> Vector3:
 	return _mouth.global_position
 
 
-# --- Player interaction (debug stand-ins until milestone 2) ----------------------
+# --- Player interaction (debug stand-ins until milestone 3, Hands) ----------------------
 
 func pet() -> void:
 	brain.on_petted(sleeping)
@@ -470,7 +470,7 @@ func _build_placeholder() -> void:
 		visual_root.scale = Vector3.ONE * breed.size_scale
 
 
-## Touch zones ride on BodyRoot so they follow poses. Milestone 4 moves them onto
+## Touch zones ride on BodyRoot so they follow poses. Milestone 8 moves them onto
 ## bone attachments of the rigged model. A zero y size makes a sphere.
 func _build_touch_zones() -> void:
 	var specs := {

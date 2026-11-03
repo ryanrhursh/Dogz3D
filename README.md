@@ -1,7 +1,9 @@
-# Dogz 3D (working title) — Milestone 1: gray box
+# Dogz 3D (working title)
 
-A capsule-shaped corgi with needs, a personality and a utility-AI brain, living in a one-room
-diorama with a day/night cycle. No player hand yet; debug keys stand in for it.
+A cozy dog sanctuary town builder (see `docs/design.md`, roadmap in `docs/roadmap.md`).
+Current build: the milestone 1 gray box, with a capsule-shaped corgi that has needs, a
+personality and a utility-AI brain, living in a one-room diorama with a day/night cycle.
+The pack (many dogs), the hand tool and the town economy are in progress.
 
 Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the editor and press F5.
 
@@ -13,7 +15,7 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | C | Re-follow the dog after panning |
 | 1 2 3 4 | Time scale 1x, 4x, 16x, 60x |
 | Space | Pause |
-| E | Pet the dog (debug stand-in for milestone 2's hand tool) |
+| E | Pet the selected dog (debug fallback for the milestone 3 hand tool) |
 | F / G | Refill food / water bowl |
 | F3 | Toggle the debug overlay |
 | F5 / F9 | Save / load |
@@ -31,7 +33,7 @@ dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/breeds/     BreedData resources (corgi.tres)
 items/          WorldItem + bowl and bed scenes; the AI reads affordance tags only
-interaction/    Milestone 2: hand cursor and touch zones (TouchZone so far)
+interaction/    Milestone 3: hand tool and touch zones (TouchZone so far)
 tests/          Headless test runner and suites (--test=all)
 tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)
 docs/           Milestone plans

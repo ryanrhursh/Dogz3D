@@ -1,14 +1,14 @@
 class_name DogMemory
 extends RefCounted
 ## What the dog remembers. Milestone 1 tracks only the bond with the player.
-## Object/room/sound associations (fear of the vacuum, etc.) arrive in milestone 5.
+## Object/room/sound associations (fear of the vacuum, etc.) arrive with quests (milestone 6).
 
 const MAX_BOND := 100.0
 
 ## 0..100 trust toward the player.
 var bond := 20.0
 
-## Key (e.g. "item:vacuum") -> -1.0 (fear) .. +1.0 (love). Unused until milestone 5.
+## Key (e.g. "item:vacuum") -> -1.0 (fear) .. +1.0 (love). Unused until milestone 6.
 var associations: Dictionary = {}
 
 

@@ -1,12 +1,12 @@
 ; Engine configuration file.
-; Dogz 3D (working title) — gray-box milestone.
+; Dogz 3D (working title): dog sanctuary town builder.
 
 config_version=5
 
 [application]
 
 config/name="Dogz 3D (working title)"
-config/description="Cozy 3D dog-raising sim. Milestone 1: gray box."
+config/description="Cozy 3D dog sanctuary town builder."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"

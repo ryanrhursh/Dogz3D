@@ -108,7 +108,7 @@ func mood() -> float:
 	return clampf(blended / DogNeeds.MAX_VALUE * 2.0 - 1.0, -1.0, 1.0)
 
 
-## Debug stand-in for milestone 2's hand tool.
+## Debug stand-in for the hand tool (milestone 3). Kept as the E-key fallback.
 func on_petted(asleep: bool) -> void:
 	if asleep:
 		needs.change(&"affection", 8.0)

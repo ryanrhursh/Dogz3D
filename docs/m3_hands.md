@@ -1,12 +1,19 @@
-# Milestone 2 "Hands": approved plan and progress
+# Milestone 3 "Hands" (close-up mode): plan and progress
 
-Read this when working on M2. Tick steps off here and in DEVELOPMENT.md Status as they land.
+This was milestone 2 before the pivot to a sanctuary town builder (see `docs/design.md`).
+The design still holds, with one change: the hand only works in **close-up mode**. In Live
+mode, LMB on a dog selects it (M2 Pack). Clicking the selected dog again enters close-up,
+and Esc leaves it. The camera frames the dog, and the hand tool below takes over LMB.
+Interactions must feel good: quick, juicy reactions, and every one grants bond (and XP
+once M5 lands).
+
+Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status as they land.
 
 ## Steps (`tools/verify.sh` after each, then commit)
 
 - [x] 1. Plumbing: physics layers, WorldItem hold/detach, body API additions, DogTouchPrefs,
       TouchZones on the dog, save v2, headless test harness. Soak unchanged.
-- [ ] 2. HandTool + petting: hover/highlight, strokes -> `Dog.touch()` -> `DogBrain.on_touched()`,
+- [ ] 2. Close-up mode (enter/exit, camera framing) + HandTool + petting: hover/highlight, strokes -> `Dog.touch()` -> `DogBrain.on_touched()`,
       stimulus + forced re-eval, `enjoy_pets` and `duck_away` behaviors, overlay HANDS section, tests.
 - [ ] 3. Hand feeding: kibble (from bowl) and treat (from new treat jar) pieces,
       `Dog.feed_from_hand()` -> `DogBrain.on_hand_fed()`, `come_for_food` behavior, tests.
@@ -65,9 +72,9 @@ Emotes: "<3" liked, "~" neutral, "!" disliked (ears flatten briefly).
 - `duck_away`: 1.0 right after a disliked touch (overrides eat/sleep), not interruptible.
   Walk to a nav point 0.8-1.4 m away from the hand.
 - `come_for_food`: food held by hand within 4 m; score from hunger urgency, food_drive, bond;
-  capped 0.85. Walk under the hand, sit, face it; re-path if it moves > 0.6 m. (M3 lure.)
+  capped 0.85. Walk under the hand, sit, face it; re-path if it moves > 0.6 m. (M5 training lure.)
 - `chase_toy`: base from toy_drive x fun urgency x energy gate; big bonus for a recent throw.
-  States chase -> grab -> play/carry -> drop, plus a `RETURN` stub for M3 fetch. Runs
+  States chase -> grab -> play/carry -> drop, plus a `RETURN` stub for M5 fetch. Runs
   (`set_gait(&"run")`), re-paths while the ball rolls, fails with cooldown if `!can_reach`.
 
 **Hand feeding numbers (starting point).** Kibble handful: hunger +8, affection +4, bond +1.0.

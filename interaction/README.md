@@ -1,6 +1,6 @@
 # interaction/
 
-Milestone 2, the player's hand. See `docs/milestone2.md` for the plan and progress.
+Milestone 3, the player's hand in close-up mode. See `docs/m3_hands.md` for the plan and progress.
 
 - `touch_zone.gd`: `TouchZone` Area3D (head, ears, back, belly) on physics layer 3. The Dog
   builds four of them on its BodyRoot. The per-dog preferences live in

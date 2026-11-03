@@ -1,7 +1,7 @@
 class_name BreedData
 extends Resource
 ## Breed template. Each trait is a min..max range a new puppy rolls inside.
-## Body shape keys and the real model hook in here in milestone 4.
+## Body shape keys and the real model hook in here in milestone 8 (art pass).
 
 @export var breed_name := "Mutt"
 @export var size_scale := 1.0

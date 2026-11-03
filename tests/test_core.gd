@@ -1,5 +1,5 @@
 extends TestSuite
-## Milestone 2 plumbing: touch prefs, touch zones, holding items, reach, save v2.
+## Hands (milestone 3) plumbing: touch prefs, touch zones, holding items, reach, save v2.
 
 
 func test_touch_prefs_deterministic() -> void:
