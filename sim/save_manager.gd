@@ -51,7 +51,8 @@ func save_game(path: String = SAVE_PATH) -> bool:
 	var items: Dictionary = {}
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
-		if item != null:
+		# Spawned pieces (kibble, treats) aren't saved: their paths don't exist on load.
+		if item != null and not item.free_when_empty:
 			items[String(scene.get_path_to(item))] = item.to_dict()
 
 	var data := {

@@ -19,6 +19,7 @@ const PlayTogetherBehavior := preload("res://dog/brain/behaviors/play_together.g
 const WaitTurnBehavior := preload("res://dog/brain/behaviors/wait_turn.gd")
 const EnjoyPetsBehavior := preload("res://dog/brain/behaviors/enjoy_pets.gd")
 const DuckAwayBehavior := preload("res://dog/brain/behaviors/duck_away.gd")
+const ComeForFoodBehavior := preload("res://dog/brain/behaviors/come_for_food.gd")
 
 ## Affinity and affection a dog gains when another dog greets it nicely.
 const GREETED_AFFINITY := 0.05
@@ -41,6 +42,9 @@ const ASLEEP_LIKED_AFFECTION := 1.0
 const DISLIKED_AFFECTION := 1.0
 const DISLIKED_BOND := 0.1
 const DISLIKED_BOND_PER_PREF := 0.2
+## Hand-fed bond is scaled by food_drive onto [low, high]: foodies bond over food more.
+const HAND_FED_BOND_LOW := 0.7
+const HAND_FED_BOND_HIGH := 1.3
 ## A new touch of the same zone and reaction within this many game minutes extends the
 ## last log line instead of adding one, so a long stroke doesn't flood the log.
 const TOUCH_LOG_GAP := 1.0
@@ -107,6 +111,7 @@ func setup(p_personality: DogPersonality, seed_value: int,
 		# Hand behaviors score 0 until the player's hand does something.
 		EnjoyPetsBehavior.new(),
 		DuckAwayBehavior.new(),
+		ComeForFoodBehavior.new(),
 	]
 	planner.behaviors = list
 
@@ -218,6 +223,26 @@ func on_touched(zone: StringName, strokes: int, asleep: bool, point: Vector3) ->
 	}
 	_force_eval = true
 	return reaction
+
+
+## The player's hand fed this dog. `effects` has hunger, affection, fun and bond (bond
+## before food_drive scaling). Records a &"hand_fed" stimulus and re-evaluates next tick.
+func on_hand_fed(effects: Dictionary, treat: bool) -> void:
+	for need: StringName in [&"hunger", &"affection", &"fun"]:
+		needs.change(need, float(effects.get(String(need), 0.0)))
+	var drive := personality.get_trait_value(&"food_drive")
+	memory.change_bond(float(effects.get("bond", 0.0))
+			* lerpf(HAND_FED_BOND_LOW, HAND_FED_BOND_HIGH, drive))
+	stimuli[&"hand_fed"] = {"at": SimClock.total_minutes, "new": true, "treat": treat}
+	_force_eval = true
+	_log("hand-fed a treat" if treat else "hand-fed kibble")
+
+
+## The dog noticed something the player did (`kind`, e.g. &"food_offered", at `point`).
+## Records it and re-evaluates next tick.
+func on_stimulus(kind: StringName, point: Vector3) -> void:
+	stimuli[kind] = {"at": SimClock.total_minutes, "new": true, "point": point}
+	_force_eval = true
 
 
 ## The stimulus of `kind` (see stimuli), or an empty Dictionary.

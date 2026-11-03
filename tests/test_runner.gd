@@ -8,6 +8,7 @@ const SUITES := {
 	"pack": "res://tests/test_pack.gd",
 	"social": "res://tests/test_social.gd",
 	"petting": "res://tests/test_petting.gd",
+	"feeding": "res://tests/test_feeding.gd",
 }
 
 var passed := 0

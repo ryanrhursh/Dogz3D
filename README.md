@@ -19,10 +19,11 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | LMB on the selected dog | Close-up mode: the camera frames the dog and the hand takes over LMB |
 | Esc | Leave close-up mode |
 | Close-up: LMB press / drag on the dog | Pat / stroke (head, ears, back, belly; each dog has favorite spots) |
+| Close-up: hold LMB on the food bowl / treat jar | Take kibble / a treat; let go at a dog's head to hand-feed it, anywhere else to drop it |
 | I | Toggle the dog card (the selected dog's mood, needs, traits, bond, best friend) |
 | N | Adopt another dog (debug) |
 | E | Pet the selected dog (debug fallback, kept for the `--autopet` soak) |
-| F / G | Refill food / water bowl |
+| F / G | Refill food bowl and treat jar / water bowl |
 | F3 | Toggle the debug overlay |
 | F5 / F9 | Save / load |
 | F8 | Re-roll the selected dog (new personality, needs reset) |
@@ -36,11 +37,12 @@ Change `SimClock.minutes_per_real_second` to tune it.
 sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
-                wait_turn, enjoy_pets, duck_away
+                wait_turn, enjoy_pets, duck_away, come_for_food
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
-items/          WorldItem + bowl and bed scenes; the AI reads affordance tags only
+items/          WorldItem + bowl, bed and treat jar scenes, FoodPiece (kibble, treat);
+                the AI reads affordance tags only
 interaction/    Milestone 3: HandTool (close-up hand cursor) and TouchZone
 tests/          Headless test runner and suites (--test=all)
 tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)

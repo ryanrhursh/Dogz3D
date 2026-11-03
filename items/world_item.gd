@@ -33,6 +33,14 @@ signal fill_changed(item: WorldItem)
 ## Extra slots only for dogs that are close friends with everyone already using it
 ## (two friends curled up on one bed). Dogs claim them via Dog.find_shared_item.
 @export var share_slots := 0
+## The hand takes one of these from the item (kibble from the bowl, a treat from the jar),
+## using up hand_piece_fill of its fill.
+@export var hand_piece: PackedScene
+@export var hand_piece_fill := 0.1
+
+## Items a player hand is holding right now. Static so dogs can rule out "is the player
+## offering anything?" without scanning the items group.
+static var _held_by_player: Array = []
 
 ## True while a hand or mouth carries this item.
 var held := false
@@ -157,10 +165,23 @@ func get_root() -> Node3D:
 	return self
 
 
+## True if any player hand holds an item. Cheap: the early-out for behaviors that react
+## to something held out.
+static func any_held_by_player() -> bool:
+	for i in range(_held_by_player.size() - 1, -1, -1):
+		var item: Object = _held_by_player[i]
+		if not is_instance_valid(item) or not (item as WorldItem).is_held_by_player():
+			_held_by_player.remove_at(i)
+	return not _held_by_player.is_empty()
+
+
 ## Start following `new_holder` (a hand anchor or a dog's mouth).
 func attach_to(new_holder: Node3D) -> void:
 	held = true
 	holder = new_holder
+	_held_by_player.erase(self)
+	if new_holder.is_in_group("player_hands"):
+		_held_by_player.append(self)
 	if physics_body != null:
 		physics_body.linear_velocity = Vector3.ZERO
 		physics_body.angular_velocity = Vector3.ZERO
@@ -172,6 +193,7 @@ func attach_to(new_holder: Node3D) -> void:
 func detach(velocity: Vector3 = Vector3.ZERO) -> void:
 	held = false
 	holder = null
+	_held_by_player.erase(self)
 	if physics_body != null:
 		physics_body.freeze = false
 		physics_body.linear_velocity = velocity
@@ -187,6 +209,7 @@ func is_held_by_player() -> bool:
 func remove() -> void:
 	held = false
 	holder = null
+	_held_by_player.erase(self)
 	remove_from_group("items")
 	get_root().queue_free()
 

@@ -82,8 +82,9 @@ var _emote := ""
 var _emote_timer := 0.0
 ## Real seconds the ears stay flattened back after a disliked touch.
 var _ears_flat_timer := 0.0
-## In close-up the camera is right next to the dog: the label shrinks to just the emote.
-var _closeup := false
+## Label mode: &"normal", &"small" (close-up is on another dog: name only, smaller) or
+## &"emote" (this dog is in close-up: just the emote, small).
+var _label_mode: StringName = &"normal"
 var _label_pixel_size := 0.004
 
 
@@ -244,6 +245,8 @@ func point_away_from(from: Vector3, min_dist: float, max_dist: float) -> Vector3
 
 ## Item with the affordance currently held out by the player's hand, nearest first.
 func find_offered_item(affordance: StringName) -> WorldItem:
+	if not WorldItem.any_held_by_player():
+		return null
 	var best: WorldItem = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("items"):
@@ -418,7 +421,7 @@ func dogs_near(max_dist: float) -> PackedStringArray:
 
 
 ## What this dog can observe about another dog: id, name, position, distance,
-## doing (behavior id), sleeping, moving, mood (-1..1), partner (its social_partner_id)
+## doing (behavior id), sleeping, moving, pose, mood (-1..1), partner (its social_partner_id)
 ## and affinity_to_me (how it feels about this dog). Empty if there's no such dog.
 func get_dog_info(id: String) -> Dictionary:
 	var other := _dog_by_id(id)
@@ -479,6 +482,7 @@ func _info_for(asker: Dog) -> Dictionary:
 		"doing": doing,
 		"sleeping": sleeping,
 		"moving": _moving,
+		"pose": pose,
 		"mood": brain.mood(),
 		"partner": social_partner_id,
 		"affinity_to_me": brain.memory.get_affinity(asker.dog_id),
@@ -512,13 +516,14 @@ func _separation_push() -> Vector3:
 
 
 ## True if the dog can walk close enough to put its mouth on `point`
-## (on the navmesh and low enough: not on the table).
-func can_reach(point: Vector3) -> bool:
+## (on the navmesh and low enough: not on the table). A smaller `slack` asks whether the
+## dog can stand right there.
+func can_reach(point: Vector3, slack: float = REACH_SLACK) -> bool:
 	if point.y > MAX_REACH_HEIGHT:
 		return false
 	var map_rid := get_world_3d().navigation_map
 	var on_mesh := NavigationServer3D.map_get_closest_point(map_rid, point)
-	return _flat_distance(on_mesh, point) <= REACH_SLACK
+	return _flat_distance(on_mesh, point) <= slack
 
 
 ## Takes the item in the mouth. Fails if someone else is holding it.
@@ -572,11 +577,32 @@ func touch(zone: StringName, strokes: int = 1, hand_point: Vector3 = Vector3.INF
 	return reaction
 
 
-## Close-up mode on this dog: its label shows only emotes, smaller (main.gd sets it).
-func set_closeup(on: bool) -> void:
-	_closeup = on
+## The player's hand gives `item` (kibble, a treat) to this dog. False if the dog is
+## asleep or it isn't food. The item is used up.
+func feed_from_hand(item: WorldItem) -> bool:
+	if item == null or not is_instance_valid(item) or sleeping or not item.has_affordance(&"food"):
+		return false
+	var effects := {"hunger": 8.0, "affection": 4.0, "fun": 0.0, "bond": 1.0}
+	var piece := item as FoodPiece
+	if piece != null:
+		effects = piece.hand_fed_effects()
+	brain.on_hand_fed(effects, item.has_affordance(&"treat"))
+	item.remove()
+	show_emote("nom <3", 1.5)
+	return true
+
+
+## Something the player did that this dog may react to (&"food_offered" at `source`).
+func notice(stimulus: StringName, source: Vector3) -> void:
+	brain.on_stimulus(stimulus, source)
+
+
+## How the 3D label shows while the camera is close (main.gd sets it in close-up):
+## &"normal", &"small" (name and emotes, smaller) or &"emote" (only emotes, smaller).
+func set_label_mode(mode: StringName) -> void:
+	_label_mode = mode
 	if status_label != null:
-		status_label.pixel_size = _label_pixel_size * (0.45 if on else 1.0)
+		status_label.pixel_size = _label_pixel_size * (1.0 if mode == &"normal" else 0.45)
 
 
 ## True while the ears are flattened after a disliked touch.
@@ -760,8 +786,13 @@ func _update_label(delta: float) -> void:
 		return
 	if _emote_timer > 0.0:
 		_emote_timer -= delta
-	if _closeup:
+	if _label_mode == &"emote":
 		status_label.text = _emote if _emote_timer > 0.0 else ""
+		return
+	if _label_mode == &"small":
+		status_label.text = dog_name
+		if _emote_timer > 0.0:
+			status_label.text += "\n" + _emote
 		return
 	var doing := "..."
 	if brain.current != null:

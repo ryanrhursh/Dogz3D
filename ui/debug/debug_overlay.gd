@@ -7,7 +7,7 @@ const NEED_ORDER := [&"hunger", &"thirst", &"energy", &"fun", &"affection"]
 const HELP_TEXT := "RMB drag orbit · wheel zoom · WASD pan · C follow dog    " \
 		+ "LMB/Tab select dog · LMB selected dog close-up · Esc leave · N adopt · I dog card    " \
 		+ "1-4 speed · Space pause\n" \
-		+ "Close-up: LMB pat · drag stroke    " \
+		+ "Close-up: LMB pat · drag stroke · hold LMB on bowl/jar, let go at head to feed    " \
 		+ "E pet · F refill food · G refill water    " \
 		+ "F3 overlay · F5 save · F9 load · F8 re-roll dog"
 
@@ -104,7 +104,7 @@ func _refresh_view() -> void:
 	var item_lines := PackedStringArray()
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
-		if item != null and item.consumable:
+		if item != null and item.consumable and not item.free_when_empty:
 			var busy := ""
 			if item.user_count() > 0:
 				busy = " (in use)"
@@ -136,7 +136,10 @@ func _hands_text(d: Dog) -> String:
 		var zone_text := "-"
 		if hand.hovered_zone != null and is_instance_valid(hand.hovered_zone):
 			zone_text = String(hand.hovered_zone.zone_id)
-		lines.append("hand %s   zone %s" % [hand.state, zone_text])
+		var holding := ""
+		if hand.held_item != null and is_instance_valid(hand.held_item):
+			holding = "   holding %s" % hand.held_item.display_name
+		lines.append("hand %s   zone %s%s" % [hand.state, zone_text, holding])
 	var brain := d.brain
 	var prefs := PackedStringArray()
 	for zone: StringName in DogTouchPrefs.ZONES:
@@ -153,6 +156,10 @@ func _hands_text(d: Dog) -> String:
 	else:
 		lines.append("last: %s %s x%d, %.1f min ago" % [touch["zone"], touch["reaction"],
 				int(touch["strokes"]), brain.stimulus_age(&"touch")])
+	var fed := brain.get_stimulus(&"hand_fed")
+	if not fed.is_empty():
+		lines.append("hand-fed %s, %.1f min ago" % ["treat" if bool(fed["treat"]) else "kibble",
+				brain.stimulus_age(&"hand_fed")])
 	return "\n".join(lines)
 
 

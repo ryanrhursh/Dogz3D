@@ -36,6 +36,7 @@ const DOGS_LAYER := 2
 @onready var hand_tool: HandTool = $HandTool
 @onready var food_bowl: WorldItem = $Items/FoodBowl
 @onready var water_bowl: WorldItem = $Items/WaterBowl
+@onready var treat_jar: WorldItem = $Items/TreatJar
 
 var _quit_after_minutes := -1.0
 var _start_minutes := 0.0
@@ -186,6 +187,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			pup.show_emote("new friend!", 2.0)
 		KEY_F:
 			food_bowl.refill()
+			treat_jar.refill()
 		KEY_G:
 			water_bowl.refill()
 		KEY_C:
@@ -255,14 +257,24 @@ func exit_closeup() -> void:
 
 
 func _set_closeup_dog(target: Dog) -> void:
-	if closeup_dog != null and is_instance_valid(closeup_dog):
-		closeup_dog.set_closeup(false)
 	closeup_dog = target
+	_update_label_modes()
 	if target == null:
 		return
-	target.set_closeup(true)
 	camera_rig.enter_closeup(target)
 	hand_tool.activate(target)
+
+
+## In close-up every dog's 3D label shrinks (the camera is near) and the close-up dog's
+## shows only emotes.
+func _update_label_modes() -> void:
+	for d in pack.dogs:
+		if closeup_dog == null:
+			d.set_label_mode(&"normal")
+		elif d == closeup_dog:
+			d.set_label_mode(&"emote")
+		else:
+			d.set_label_mode(&"small")
 
 
 ## The dog under a screen position (its body or a touch zone), or null.
@@ -300,6 +312,8 @@ func _on_selection_changed(dog: Dog) -> void:
 
 func _on_dog_added(dog: Dog) -> void:
 	dog.brain.behavior_changed.connect(_on_behavior_changed.bind(dog))
+	if closeup_dog != null:
+		dog.set_label_mode(&"small")
 
 
 func _on_behavior_changed(from_id: StringName, to_id: StringName, reason: String,

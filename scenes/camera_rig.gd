@@ -15,7 +15,7 @@ extends Node3D
 @export_group("Close-up")
 @export var closeup_distance := 1.9
 @export var closeup_min_distance := 0.9
-@export var closeup_max_distance := 3.5
+@export var closeup_max_distance := 5.0
 @export var closeup_pitch_degrees := -32.0
 @export var closeup_look_height := 0.3
 

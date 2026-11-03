@@ -1,0 +1,72 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+[ext_resource type="PackedScene" path="res://items/treat.tscn" id="2_treat"]
+
+[sub_resource type="StandardMaterial3D" id="Mat_glass"]
+albedo_color = Color(0.85, 0.92, 0.95, 0.35)
+transparency = 1
+roughness = 0.1
+
+[sub_resource type="CylinderMesh" id="Mesh_jar"]
+material = SubResource("Mat_glass")
+top_radius = 0.09
+bottom_radius = 0.09
+height = 0.22
+
+[sub_resource type="StandardMaterial3D" id="Mat_lid"]
+albedo_color = Color(0.75, 0.3, 0.25, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="Mesh_lid"]
+material = SubResource("Mat_lid")
+top_radius = 0.095
+bottom_radius = 0.095
+height = 0.03
+
+[sub_resource type="StandardMaterial3D" id="Mat_treats"]
+albedo_color = Color(0.86, 0.62, 0.36, 1)
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="Mesh_treats"]
+material = SubResource("Mat_treats")
+top_radius = 0.08
+bottom_radius = 0.08
+height = 0.18
+
+[sub_resource type="CylinderShape3D" id="Shape_pick"]
+height = 0.26
+radius = 0.11
+
+[node name="TreatJar" type="Node3D" node_paths=PackedStringArray("fill_visual")]
+script = ExtResource("1_item")
+display_name = "Treat jar"
+affordances = PackedStringArray("treat_jar")
+consumable = true
+fill_visual = NodePath("Contents")
+hand_piece = ExtResource("2_treat")
+hand_piece_fill = 0.1
+
+[node name="Jar" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, 0)
+mesh = SubResource("Mesh_jar")
+
+[node name="Lid" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.235, 0)
+mesh = SubResource("Mesh_lid")
+
+[node name="Contents" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Contents"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
+mesh = SubResource("Mesh_treats")
+
+[node name="Pick" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.13, 0)
+collision_layer = 8
+collision_mask = 0
+monitoring = false
+
+[node name="Shape" type="CollisionShape3D" parent="Pick"]
+shape = SubResource("Shape_pick")

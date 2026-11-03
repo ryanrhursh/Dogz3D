@@ -14,9 +14,10 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: M3 Hands steps 3–5 (see `docs/m3_hands.md`).
-- M3 Hands (close-up mode): steps 1–2 of 5 done (plumbing and test harness; close-up
-  mode, HandTool, petting with enjoy_pets and duck_away). See `docs/m3_hands.md`.
+- NEXT: M3 Hands steps 4–5 (see `docs/m3_hands.md`).
+- M3 Hands (close-up mode): steps 1–3 of 5 done (plumbing and test harness; close-up
+  mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
+  treat jar and come_for_food). See `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
   roadmap.
 
@@ -36,7 +37,7 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   (go_to, go_to_item, face_point, set_pose, set_gait, find_nearest_item, find_offered_item,
   random_point_near, can_reach, pick_up, drop_held, get_mouth_position, claim_item,
   release_item, find_shared_item, find_busy_item, join_queue, leave_queue,
-  point_away_from; for other dogs find_nearest_dog, dogs_near, get_dog_info, invite_dog,
+  point_away_from, find_offered_item; for other dogs find_nearest_dog, dogs_near, get_dog_info, invite_dog,
   get_invite, notify_dog, set_social_partner). A behavior that claims an item, or joins its line, releases or
   leaves it in exit().
 - Everything that simulates uses `SimClock.last_delta_minutes` (game minutes), never the

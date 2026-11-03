@@ -15,7 +15,7 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
       TouchZones on the dog, save v2, headless test harness. Soak unchanged.
 - [x] 2. Close-up mode (enter/exit, camera framing) + HandTool + petting: hover/highlight, strokes -> `Dog.touch()` -> `DogBrain.on_touched()`,
       stimulus + forced re-eval, `enjoy_pets` and `duck_away` behaviors, overlay HANDS section, tests.
-- [ ] 3. Hand feeding: kibble (from bowl) and treat (from new treat jar) pieces,
+- [x] 3. Hand feeding: kibble (from bowl) and treat (from new treat jar) pieces,
       `Dog.feed_from_hand()` -> `DogBrain.on_hand_fed()`, `come_for_food` behavior, tests.
 - [ ] 4. Ball: `items/ball.tscn`, item bounds, throw from hand, `chase_toy` behavior, tests,
       record new soak baseline (the idle ball will shift wander/idle counts).
@@ -86,6 +86,53 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
 - Touch log lines merge: the same zone and reaction within 1 game min extends the stroke
   count instead of adding a decision-log line.
 
+## What step 3 added
+
+- `FoodPiece` (`items/food_piece.gd`, extends WorldItem): `hand_hunger`, `hand_affection`,
+  `hand_fun`, `hand_bond`, `hand_fed_effects()`. Scenes `items/kibble.tscn` (food, fill
+  0.1) and `items/treat.tscn` (food + treat, fill 0.05); both `movable`, `free_when_empty`.
+- WorldItem: `hand_piece` (PackedScene) + `hand_piece_fill` (0.1): what the hand takes and
+  how much fill it uses. Static `any_held_by_player()` (kept by attach_to/detach/remove).
+  `find_offered_item` early-outs on it.
+- Food bowl got `hand_piece = kibble` and a `Pick` Area3D on layer 4. New
+  `items/treat_jar.tscn` (affordance `treat_jar`, 10 treats, `Pick` area) on the table at
+  (1.95, 0.75, 0.75). F refills the bowl and the jar.
+- HandTool: state `carrying`, `held_item`, `hovered_item`; `pick_from(item)` (piece from a
+  bowl/jar, or a loose movable item), `carry_to(point)`, `release_at(point) -> Dog`
+  (feeds the nearest awake dog whose mouth is within 0.45 m, else drops to the surface
+  below). Carried food floats 0.35 m over the floor, or sits on a touch zone. Dogs within
+  4 m `notice(&"food_offered")` on pick and every 1.5 m of hand travel.
+- `Dog.feed_from_hand(item) -> bool` -> `DogBrain.on_hand_fed(effects, treat)`;
+  `Dog.notice(stimulus, point)` -> `DogBrain.on_stimulus(kind, point)` (records and forces
+  a re-eval). `can_reach(point, slack)` takes an optional slack. `get_dog_info` has `pose`.
+- `come_for_food` (registered after duck_away). Eat now counts a piece that vanished after
+  it ate some as done, not failed. Spawned pieces aren't saved. Tests: `tests/test_feeding.gd`.
+
+## Decisions (step 3)
+
+- **Numbers** as the design: kibble hunger +8, affection +4, bond 1.0; treat hunger +3,
+  affection +8, fun +5, bond 1.5. Bond x lerp(0.7, 1.3, food_drive). Bowl food: no bond.
+- **Pieces are data, not code**: the bowl/jar say what piece they give (`hand_piece`) and
+  the piece carries its hand-fed numbers. Dropped, a piece is ordinary `food` whose fill is
+  in bowl units, so eating it from the floor gives about what the bowl would (kibble 0.1
+  fill = 1.25 min = 7.5 hunger).
+- **Treat jar** is limited (10 treats, F refills) so treats can't be farmed endlessly.
+- **Any awake dog** at the hand can be fed, not only the close-up dog (a crowd forms).
+- **come_for_food score**: (0.3 + 0.6 x hunger urgency) x lerp(0.6, 1.3, food_drive)
+  x lerp(0.85, 1.15, bond / 100), +0.15 for a treat, cap 0.85. Range 4 m (5 m once coming).
+  Even a full dog comes over a little (0.3 base): it's curious about food in your hand.
+- **Spots round the hand**: each dog waits 0.55 m out (its mouth is then under the hand)
+  on a ring, from its own side, picking the reachable spot with the most clearance from
+  the dogs already there. On arrival, if a dog within 0.4 m is sitting there already or
+  has the smaller dog_id, it moves round the ring (up to 6 times). Without this a pack
+  piled into one spot. Re-paths when the hand moves > 0.6 m; gives up after 10 min.
+- **Close-up max zoom raised to 5 m** so the bowl and jar can be reached from close-up.
+- **Labels in close-up**: the close-up dog's 3D label shows only emotes, other dogs' show
+  only their name, both at 0.45x size (`Dog.set_label_mode`).
+- **pack30** (not baseline-checked) is chaotic with respect to physics scene contents:
+  the new Area3D pick colliders shift its counts slightly. The 1- and 12-dog baselines are
+  unchanged.
+
 ## Design (approved)
 
 **Controls.** RMB stays camera orbit. LMB on a zone: press = pat, drag = strokes (one per 0.15 m
@@ -137,3 +184,9 @@ reaction. Update HELP_TEXT.
 **Known open questions** (resolve during the milestone, don't block on them):
 - Belly zone is hard to reach from the default camera; a `belly_up` pose may be needed.
 - Dropped kibble and other spawned items are not saved (their scene paths don't exist on load).
+  Since step 3 SaveManager skips `free_when_empty` items, so saves stay clean.
+- Food dropped on the table top is food a dog can't reach; eat walks there, gets stuck
+  and fails with its cooldown. Drop only onto reachable floor, or let dogs skip
+  unreachable food (`can_reach`), if it shows up in play.
+- Close-up only frames one dog; reaching the bowl or jar means zooming out (wheel) or
+  orbiting. A treat pouch or a hotkey may feel better; check in the windowed test.

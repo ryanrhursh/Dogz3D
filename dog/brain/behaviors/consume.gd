@@ -55,6 +55,9 @@ func enter(dog: Dog) -> void:
 
 func tick(dog: Dog, game_minutes: float) -> int:
 	if _item == null or not is_instance_valid(_item):
+		# A piece of food on the floor is freed once it's eaten up.
+		if _consumed_minutes > 0.0:
+			return SUCCEEDED
 		return FAILED
 	if dog.is_moving():
 		return RUNNING

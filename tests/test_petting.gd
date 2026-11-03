@@ -64,10 +64,12 @@ func _flat(a: Vector3, b: Vector3) -> float:
 
 
 func test_hand_behaviors_registered_last_and_quiet() -> void:
-	var behaviors := dog.brain.planner.behaviors
-	var n := behaviors.size()
-	check(behaviors[n - 2].id == &"enjoy_pets" and behaviors[n - 1].id == &"duck_away",
-			"enjoy_pets and duck_away are registered last")
+	var ids: Array[StringName] = []
+	for behavior in dog.brain.planner.behaviors:
+		ids.append(behavior.id)
+	var after := ids.find(&"wait_turn")
+	check(ids.find(&"enjoy_pets") == after + 1 and ids.find(&"duck_away") == after + 2,
+			"enjoy_pets and duck_away are registered after the existing behaviors")
 	SimClock.paused = true
 	var state_before := dog.brain.rng.state
 	dog.pet()
