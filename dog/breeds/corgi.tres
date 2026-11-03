@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BreedData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://dog/brain/breed_data.gd" id="1_breed"]
+
+[resource]
+script = ExtResource("1_breed")
+breed_name = "Corgi"
+size_scale = 0.9
+coat_color = Color(0.86, 0.52, 0.24, 1)
+energy_range = Vector2(0.55, 0.9)
+sociability_range = Vector2(0.6, 0.9)
+boldness_range = Vector2(0.5, 0.9)
+food_drive_range = Vector2(0.7, 1)
+toy_drive_range = Vector2(0.5, 0.8)
+stubbornness_range = Vector2(0.5, 0.85)
+trainability_range = Vector2(0.5, 0.8)

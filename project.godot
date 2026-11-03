@@ -1,0 +1,36 @@
+; Engine configuration file.
+; Dogz 3D (working title) — gray-box milestone.
+
+config_version=5
+
+[application]
+
+config/name="Dogz 3D (working title)"
+config/description="Cozy 3D dog-raising sim. Milestone 1: gray box."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+SimClock="*res://sim/sim_clock.gd"
+SaveManager="*res://sim/save_manager.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="dogs"
+
+[navigation]
+
+3d/default_cell_size=0.125
+3d/default_cell_height=0.125
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
