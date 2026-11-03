@@ -16,6 +16,7 @@ extends Node3D
 ##   --dogs=N              start with N dogs (default 1)
 ##   --bowls=N             N food and N water bowls (default 1, max 4), for big-pack soaks
 ##   --log                 print every behavior change
+##   --closeup             start in close-up mode on the selected dog (for screenshots)
 ##   --screenshot=PATH     save a PNG after --screenshot-delay=N real seconds (default 3), then quit
 ##   --test=SUITE|all      run headless tests (tests/test_runner.gd), then quit with 0/1
 
@@ -32,6 +33,7 @@ const DOGS_LAYER := 2
 @onready var overlay = $DebugOverlay
 @onready var camera_rig = $CameraRig
 @onready var dog_panel: DogPanel = $DogPanel
+@onready var hand_tool: HandTool = $HandTool
 @onready var food_bowl: WorldItem = $Items/FoodBowl
 @onready var water_bowl: WorldItem = $Items/WaterBowl
 
@@ -46,6 +48,8 @@ var _lowest_seen: Dictionary = {}
 ## Wall-clock microseconds between frames, for the soak summary's frame time line.
 var _frame_usecs: PackedInt64Array = PackedInt64Array()
 var _last_frame_usec := 0
+## The dog in close-up mode, null in Live mode.
+var closeup_dog: Dog
 
 
 func _ready() -> void:
@@ -79,6 +83,9 @@ func _ready() -> void:
 
 	for need: StringName in DogNeeds.BASE_DECAY_PER_HOUR:
 		_lowest_seen[need] = DogNeeds.MAX_VALUE
+
+	if args.has("closeup"):
+		enter_closeup(pack.selected)
 
 	if args.has("screenshot"):
 		_screenshot_and_quit(str(args["screenshot"]), float(args.get("screenshot-delay", "3")))
@@ -144,11 +151,9 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			var picked := pick_dog_at(mb.position)
-			if picked != null:
-				# Clicking the already-selected dog will enter close-up mode (milestone 3).
-				pack.select(picked)
+		# In close-up the hand tool owns LMB.
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and closeup_dog == null:
+			if click_dog(pick_dog_at(mb.position)):
 				get_viewport().set_input_as_handled()
 		return
 	if not (event is InputEventKey):
@@ -165,6 +170,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_set_speed(2)
 		KEY_4:
 			_set_speed(3)
+		KEY_ESCAPE:
+			if closeup_dog == null:
+				return
+			exit_closeup()
 		KEY_SPACE:
 			SimClock.paused = not SimClock.paused
 		KEY_E:
@@ -215,6 +224,47 @@ func _add_bowl_pairs(extra: int) -> void:
 			original.get_parent().add_child(copy)
 
 
+## Live-mode click on `picked` (null for empty space): a new dog gets selected, the
+## already-selected one goes into close-up. True if the click was used.
+func click_dog(picked: Dog) -> bool:
+	if picked == null:
+		return false
+	if picked == pack.selected:
+		enter_closeup(picked)
+	else:
+		pack.select(picked)
+	return true
+
+
+## Close-up mode: the camera frames `target` and the hand tool takes over LMB.
+func enter_closeup(target: Dog) -> void:
+	if target == null or not pack.dogs.has(target):
+		return
+	if pack.selected != target:
+		pack.select(target)
+	_set_closeup_dog(target)
+
+
+## Back to Live mode and the view from before close-up.
+func exit_closeup() -> void:
+	if closeup_dog == null:
+		return
+	_set_closeup_dog(null)
+	hand_tool.deactivate()
+	camera_rig.exit_closeup(pack.selected)
+
+
+func _set_closeup_dog(target: Dog) -> void:
+	if closeup_dog != null and is_instance_valid(closeup_dog):
+		closeup_dog.set_closeup(false)
+	closeup_dog = target
+	if target == null:
+		return
+	target.set_closeup(true)
+	camera_rig.enter_closeup(target)
+	hand_tool.activate(target)
+
+
 ## The dog under a screen position (its body or a touch zone), or null.
 ## Walls and furniture block the pick.
 func pick_dog_at(screen_pos: Vector2) -> Dog:
@@ -238,6 +288,13 @@ func pick_dog_at(screen_pos: Vector2) -> Dog:
 func _on_selection_changed(dog: Dog) -> void:
 	overlay.dog = dog
 	dog_panel.dog = dog
+	if closeup_dog != null:
+		# Tab in close-up moves it to the next dog; losing the dog ends it.
+		if dog == null:
+			exit_closeup()
+			return
+		_set_closeup_dog(dog)
+		return
 	camera_rig.set_target(dog, false)
 
 

@@ -17,6 +17,8 @@ const IdleBehavior := preload("res://dog/brain/behaviors/idle.gd")
 const GreetBehavior := preload("res://dog/brain/behaviors/greet.gd")
 const PlayTogetherBehavior := preload("res://dog/brain/behaviors/play_together.gd")
 const WaitTurnBehavior := preload("res://dog/brain/behaviors/wait_turn.gd")
+const EnjoyPetsBehavior := preload("res://dog/brain/behaviors/enjoy_pets.gd")
+const DuckAwayBehavior := preload("res://dog/brain/behaviors/duck_away.gd")
 
 ## Affinity and affection a dog gains when another dog greets it nicely.
 const GREETED_AFFINITY := 0.05
@@ -25,6 +27,23 @@ const GREETED_AFFECTION := 1.0
 const SOCIAL_AFFECTION_CAP := 60.0
 ## Affinity lost toward a dog that pestered this one while it was grumpy.
 const BOTHERED_AFFINITY := -0.04
+
+## Touch effects per stroke (a pat is one stroke), scaled by the effective preference.
+## Liked: affection BASE + PER_PREF * pref, bond BASE + PER_PREF * pref.
+const LIKED_AFFECTION := 2.0
+const LIKED_AFFECTION_PER_PREF := 4.0
+const LIKED_BOND := 0.05
+const LIKED_BOND_PER_PREF := 0.15
+const NEUTRAL_AFFECTION := 1.0
+## Asleep and liked: it stays asleep and only soaks up a little affection.
+const ASLEEP_LIKED_AFFECTION := 1.0
+## Disliked: affection and bond drop, bond more the more it's disliked.
+const DISLIKED_AFFECTION := 1.0
+const DISLIKED_BOND := 0.1
+const DISLIKED_BOND_PER_PREF := 0.2
+## A new touch of the same zone and reaction within this many game minutes extends the
+## last log line instead of adding one, so a long stroke doesn't flood the log.
+const TOUCH_LOG_GAP := 1.0
 
 var needs := DogNeeds.new()
 var personality := DogPersonality.new()
@@ -40,10 +59,16 @@ var cooldowns: Dictionary = {}
 var decision_log: Array[String] = []
 ## Behavior id -> times chosen. Used by the soak-test summary.
 var choice_counts: Dictionary = {}
+## Recent player stimuli, kind (&"touch") -> Dictionary with at least "at" (SimClock
+## game minutes) and "new" (not yet reacted to). Touch adds zone, reaction, pref,
+## strokes, point, asleep. Not saved.
+var stimuli: Dictionary = {}
 
 var _since_eval := 0.0
 var _last_id: StringName = &"none"
 var _end_reason := "start"
+## Set by player input (on_touched); the next tick re-evaluates right away.
+var _force_eval := false
 
 
 ## p_touch_prefs is normally rolled by the Dog alongside the personality. If null,
@@ -62,6 +87,8 @@ func setup(p_personality: DogPersonality, seed_value: int,
 	cooldowns.clear()
 	decision_log.clear()
 	choice_counts.clear()
+	stimuli.clear()
+	_force_eval = false
 	_last_id = &"none"
 	_end_reason = "start"
 	_apply_personality()
@@ -77,6 +104,9 @@ func setup(p_personality: DogPersonality, seed_value: int,
 		GreetBehavior.new(),
 		PlayTogetherBehavior.new(),
 		WaitTurnBehavior.new(),
+		# Hand behaviors score 0 until the player's hand does something.
+		EnjoyPetsBehavior.new(),
+		DuckAwayBehavior.new(),
 	]
 	planner.behaviors = list
 
@@ -100,10 +130,16 @@ func tick(dog: Dog, game_minutes: float) -> void:
 	var due := _since_eval >= EVAL_INTERVAL_MINUTES
 	var may_switch := current == null or not current.interruptible \
 			or minutes_in_current >= current.min_duration
+	# Player input reacts now: no min_duration and no budget slot. The planner still only
+	# lets an emergency score interrupt a non-interruptible behavior.
+	var forced := _force_eval
+	_force_eval = false
 	# A dog with nothing to do always chooses now. A routine re-evaluation waits for a
 	# slot in this frame's budget, so a big pack spreads its thinking over frames.
-	if current == null or (due and may_switch and dog.take_eval_slot()):
+	if current == null or forced or (due and may_switch and dog.take_eval_slot()):
 		_since_eval = 0.0
+		if forced:
+			_stamp_new_stimuli()
 		var next := planner.choose(dog, current, cooldowns, rng)
 		if next != current:
 			if current != null:
@@ -137,6 +173,64 @@ func on_petted(asleep: bool) -> void:
 	needs.change(&"fun", 5.0)
 	memory.change_bond(1.5)
 	_log("petted")
+
+
+## The player's hand touched `zone` (`strokes` strokes; a pat is 1). Applies the touch
+## effects, records the stimulus and re-evaluates next tick. Returns the reaction
+## (&"likes", &"neutral", &"dislikes") for the body's emote.
+func on_touched(zone: StringName, strokes: int, asleep: bool, point: Vector3) -> StringName:
+	var n := float(maxi(strokes, 1))
+	var pref := touch_prefs.effective(zone, memory.bond)
+	var reaction := DogTouchPrefs.reaction_for(pref)
+	match reaction:
+		&"likes":
+			if asleep:
+				needs.change(&"affection", ASLEEP_LIKED_AFFECTION * n)
+			else:
+				needs.change(&"affection", (LIKED_AFFECTION + LIKED_AFFECTION_PER_PREF * pref) * n)
+				memory.change_bond((LIKED_BOND + LIKED_BOND_PER_PREF * pref) * n)
+		&"dislikes":
+			needs.change(&"affection", -DISLIKED_AFFECTION * n)
+			memory.change_bond(-(DISLIKED_BOND + DISLIKED_BOND_PER_PREF * -pref) * n)
+		_:
+			needs.change(&"affection", NEUTRAL_AFFECTION * n)
+
+	var now := SimClock.total_minutes
+	var last: Dictionary = stimuli.get(&"touch", {})
+	var total := int(n)
+	if not last.is_empty() and last["zone"] == zone and last["reaction"] == reaction \
+			and now - float(last["at"]) < TOUCH_LOG_GAP:
+		total += int(last["strokes"])
+	else:
+		var what := "touched %s" % zone
+		if asleep:
+			what += " while asleep"
+		_log("%s: %s" % [what, reaction])
+	stimuli[&"touch"] = {
+		"at": now,
+		"zone": zone,
+		"reaction": reaction,
+		"pref": pref,
+		"strokes": total,
+		"point": point,
+		"asleep": asleep,
+		"new": true,
+	}
+	_force_eval = true
+	return reaction
+
+
+## The stimulus of `kind` (see stimuli), or an empty Dictionary.
+func get_stimulus(kind: StringName) -> Dictionary:
+	return stimuli.get(kind, {})
+
+
+## Game minutes since the last stimulus of `kind`, INF if none.
+func stimulus_age(kind: StringName) -> float:
+	var s: Dictionary = stimuli.get(kind, {})
+	if s.is_empty():
+		return INF
+	return SimClock.total_minutes - float(s["at"])
 
 
 ## Affection from other dogs: fills the need only up to SOCIAL_AFFECTION_CAP.
@@ -206,6 +300,8 @@ func from_dict(data: Dictionary) -> void:
 		# Save v1 predates touch zones: roll them from the saved personality.
 		touch_prefs = _roll_touch_prefs(int(rng.seed))
 	cooldowns.clear()
+	stimuli.clear()
+	_force_eval = false
 	_log("loaded")
 
 
@@ -244,6 +340,16 @@ func _end_current(dog: Dog, reason: String) -> void:
 	current = null
 	minutes_in_current = 0.0
 	_end_reason = reason
+
+
+## A stimulus counts from when the brain first reacts to it, so at 60x speed (a game
+## minute per frame) it isn't already stale by the tick after the touch.
+func _stamp_new_stimuli() -> void:
+	for kind: StringName in stimuli:
+		var s: Dictionary = stimuli[kind]
+		if bool(s.get("new", false)):
+			s["at"] = SimClock.total_minutes
+			s["new"] = false
 
 
 func _tick_cooldowns(game_minutes: float) -> void:

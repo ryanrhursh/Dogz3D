@@ -5,7 +5,9 @@ extends CanvasLayer
 const REFRESH_SECONDS := 0.1
 const NEED_ORDER := [&"hunger", &"thirst", &"energy", &"fun", &"affection"]
 const HELP_TEXT := "RMB drag orbit · wheel zoom · WASD pan · C follow dog    " \
-		+ "LMB/Tab select dog · N adopt · I dog card    1-4 speed · Space pause    " \
+		+ "LMB/Tab select dog · LMB selected dog close-up · Esc leave · N adopt · I dog card    " \
+		+ "1-4 speed · Space pause\n" \
+		+ "Close-up: LMB pat · drag stroke    " \
 		+ "E pet · F refill food · G refill water    " \
 		+ "F3 overlay · F5 save · F9 load · F8 re-roll dog"
 
@@ -21,6 +23,7 @@ var _score_rows: Dictionary = {}
 var _items: Label
 var _traits: Label
 var _friends: Label
+var _hands: Label
 var _log: Label
 var _help: Label
 var _refresh := 0.0
@@ -114,6 +117,7 @@ func _refresh_view() -> void:
 			p.toy_drive, p.stubbornness, p.trainability]
 
 	_friends.text = _relationship_text(brain.memory)
+	_hands.text = _hands_text(dog)
 
 	var lines := PackedStringArray()
 	for i in range(brain.decision_log.size() - 1, -1, -1):
@@ -121,6 +125,35 @@ func _refresh_view() -> void:
 		if lines.size() >= 8:
 			break
 	_log.text = "\n".join(lines)
+
+
+## Hand state and hovered zone, the dog's true touch prefs (effective at its bond, raw
+## in brackets when the bond lowers them) and its last touch reaction.
+func _hands_text(d: Dog) -> String:
+	var hand := get_tree().get_first_node_in_group("hand_tool") as HandTool
+	var lines := PackedStringArray()
+	if hand != null:
+		var zone_text := "-"
+		if hand.hovered_zone != null and is_instance_valid(hand.hovered_zone):
+			zone_text = String(hand.hovered_zone.zone_id)
+		lines.append("hand %s   zone %s" % [hand.state, zone_text])
+	var brain := d.brain
+	var prefs := PackedStringArray()
+	for zone: StringName in DogTouchPrefs.ZONES:
+		var raw := brain.touch_prefs.get_raw(zone)
+		var eff := brain.touch_prefs.effective(zone, brain.memory.bond)
+		if absf(eff - raw) > 0.005:
+			prefs.append("%s %+.2f (%+.2f)" % [zone, eff, raw])
+		else:
+			prefs.append("%s %+.2f" % [zone, eff])
+	lines.append("  ".join(prefs))
+	var touch := brain.get_stimulus(&"touch")
+	if touch.is_empty():
+		lines.append("last: -")
+	else:
+		lines.append("last: %s %s x%d, %.1f min ago" % [touch["zone"], touch["reaction"],
+				int(touch["strokes"]), brain.stimulus_age(&"touch")])
+	return "\n".join(lines)
 
 
 ## Strongest feelings first (either way), up to four, named via the pack.
@@ -181,6 +214,9 @@ func _build() -> void:
 	_section(box, "RELATIONSHIPS")
 	_friends = _label(box, "", 12)
 
+	_section(box, "HANDS")
+	_hands = _label(box, "", 12)
+
 	_section(box, "DECISIONS (newest first)")
 	_log = _label(box, "", 12)
 	_log.modulate = Color(0.85, 0.88, 0.92)
@@ -190,7 +226,7 @@ func _build() -> void:
 	_help.text = HELP_TEXT
 	_help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	_help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	_help.position = Vector2(12, -28)
+	_help.position = Vector2(12, -46)
 	_help.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	add_child(_help)
 

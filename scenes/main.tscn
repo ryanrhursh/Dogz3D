@@ -1,4 +1,4 @@
-[gd_scene load_steps=40 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://sim/day_night.gd" id="2_sun"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://items/water_bowl.tscn" id="7_water"]
 [ext_resource type="PackedScene" path="res://items/dog_bed.tscn" id="8_bed"]
 [ext_resource type="Script" path="res://ui/dog_panel.gd" id="9_panel"]
+[ext_resource type="Script" path="res://interaction/hand_tool.gd" id="10_hand"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_top_color = Color(0.38, 0.55, 0.8, 1)
@@ -256,3 +257,6 @@ script = ExtResource("4_overlay")
 
 [node name="DogPanel" type="CanvasLayer" parent="."]
 script = ExtResource("9_panel")
+
+[node name="HandTool" type="Node3D" parent="."]
+script = ExtResource("10_hand")

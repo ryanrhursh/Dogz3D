@@ -14,9 +14,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: M3 Hands steps 2–5 (see `docs/m3_hands.md`).
-- M3 Hands (close-up mode): step 1 of 5 (plumbing and test harness) is done. See
-  `docs/m3_hands.md`.
+- NEXT: M3 Hands steps 3–5 (see `docs/m3_hands.md`).
+- M3 Hands (close-up mode): steps 1–2 of 5 done (plumbing and test harness; close-up
+  mode, HandTool, petting with enjoy_pets and duck_away). See `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
   roadmap.
 
@@ -35,9 +35,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   Behaviors touch the world only through the Dog body API in `dog/body/dog.gd`
   (go_to, go_to_item, face_point, set_pose, set_gait, find_nearest_item, find_offered_item,
   random_point_near, can_reach, pick_up, drop_held, get_mouth_position, claim_item,
-  release_item, find_shared_item, find_busy_item, join_queue, leave_queue; for other dogs
-  find_nearest_dog, dogs_near, get_dog_info, invite_dog, get_invite, notify_dog,
-  set_social_partner). A behavior that claims an item, or joins its line, releases or
+  release_item, find_shared_item, find_busy_item, join_queue, leave_queue,
+  point_away_from; for other dogs find_nearest_dog, dogs_near, get_dog_info, invite_dog,
+  get_invite, notify_dog, set_social_partner). A behavior that claims an item, or joins its line, releases or
   leaves it in exit().
 - Everything that simulates uses `SimClock.last_delta_minutes` (game minutes), never the
   raw engine delta. Movement uses real delta scaled by a capped time scale.
@@ -48,7 +48,11 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   (group `pack`). A brain never reads another dog's brain directly; dog-to-dog awareness
   goes through the body API.
 - A social behavior must score 0, and not touch `brain.rng`, when no other dog is near, so
-  the one-dog soak baseline stays exact.
+  the one-dog soak baseline stays exact. Likewise a hand behavior scores 0 (early-out on
+  `brain.stimuli.is_empty()`) until the player's hand does something.
+- Player input reaches a brain only through the Dog body (`touch`, later `feed_from_hand`,
+  `notice`), which calls a `DogBrain.on_*` handler. Handlers record a stimulus and force
+  a re-evaluation next tick (no min_duration, no eval budget).
 - Content is data (BreedData, and later SkillTree, BuildingData, QuestData Resources), so
   new breeds, species, skills and buildings don't need code changes where possible.
 - Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes.

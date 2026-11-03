@@ -16,9 +16,12 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | 1 2 3 4 | Time scale 1x, 4x, 16x, 60x |
 | Space | Pause |
 | LMB on a dog / Tab | Select a dog (camera follows it, card and overlay show it) |
+| LMB on the selected dog | Close-up mode: the camera frames the dog and the hand takes over LMB |
+| Esc | Leave close-up mode |
+| Close-up: LMB press / drag on the dog | Pat / stroke (head, ears, back, belly; each dog has favorite spots) |
 | I | Toggle the dog card (the selected dog's mood, needs, traits, bond, best friend) |
 | N | Adopt another dog (debug) |
-| E | Pet the selected dog (debug fallback for the milestone 3 hand tool) |
+| E | Pet the selected dog (debug fallback, kept for the `--autopet` soak) |
 | F / G | Refill food / water bowl |
 | F3 | Toggle the debug overlay |
 | F5 / F9 | Save / load |
@@ -33,12 +36,12 @@ Change `SimClock.minutes_per_real_second` to tune it.
 sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
-                wait_turn
+                wait_turn, enjoy_pets, duck_away
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
 items/          WorldItem + bowl and bed scenes; the AI reads affordance tags only
-interaction/    Milestone 3: hand tool and touch zones (TouchZone so far)
+interaction/    Milestone 3: HandTool (close-up hand cursor) and TouchZone
 tests/          Headless test runner and suites (--test=all)
 tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)
 docs/           Milestone plans
@@ -85,7 +88,7 @@ import, tests and the soak in one go (`tools/godot.sh` fetches Godot 4.6.1 if ne
 
 ## Known gaps (by design for this milestone)
 
-- Affection only rises when you press E. Nothing in the world satisfies it yet.
+- Affection only rises from you: petting in close-up (or E). Other dogs top it up a little.
 - No behavior for an empty bowl. The dog just goes without; begging comes later.
 - At 16x and above, walking is capped at 6x speed so it stays readable, so trips take more
   game time than they would at 1x. The soak test uncaps this automatically.

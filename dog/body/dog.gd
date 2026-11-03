@@ -80,10 +80,17 @@ var _ear_pivots: Array[Node3D] = []
 var _anim_time := 0.0
 var _emote := ""
 var _emote_timer := 0.0
+## Real seconds the ears stay flattened back after a disliked touch.
+var _ears_flat_timer := 0.0
+## In close-up the camera is right next to the dog: the label shrinks to just the emote.
+var _closeup := false
+var _label_pixel_size := 0.004
 
 
 func _ready() -> void:
 	add_to_group("dogs")
+	if status_label != null:
+		_label_pixel_size = status_label.pixel_size
 	if not _all_dogs.has(self):
 		_all_dogs.append(self)
 	_dogs_by_id[dog_id] = self
@@ -213,6 +220,26 @@ func random_point_near(origin: Vector3, min_dist: float, max_dist: float) -> Vec
 		if _flat_distance(on_mesh, candidate) < 0.3 and _flat_distance(on_mesh, origin) >= min_dist * 0.8:
 			return on_mesh
 	return NavigationServer3D.map_get_random_point(map_rid, 1, false)
+
+
+## A navmesh point min_dist..max_dist (flat metres) from the dog, heading away from
+## `from` (the dog's own forward if `from` is right above it). Tries a fan of directions
+## around "straight away" before falling back to random_point_near.
+func point_away_from(from: Vector3, min_dist: float, max_dist: float) -> Vector3:
+	var away := global_position - from
+	away.y = 0.0
+	if away.length() < 0.15:
+		away = global_transform.basis.z
+		away.y = 0.0
+	away = away.normalized()
+	var dist := brain.rng.randf_range(min_dist, max_dist)
+	var map_rid := get_world_3d().navigation_map
+	for angle: float in [0.0, 0.6, -0.6, 1.2, -1.2, 2.0, -2.0]:
+		var candidate := global_position + away.rotated(Vector3.UP, angle) * dist
+		var on_mesh := NavigationServer3D.map_get_closest_point(map_rid, candidate)
+		if _flat_distance(on_mesh, global_position) >= min_dist * 0.8:
+			return on_mesh
+	return random_point_near(global_position, min_dist, max_dist)
 
 
 ## Item with the affordance currently held out by the player's hand, nearest first.
@@ -519,8 +546,45 @@ func get_mouth_position() -> Vector3:
 	return _mouth.global_position
 
 
-# --- Player interaction (debug stand-ins until milestone 3, Hands) ----------------------
+# --- Player interaction ---------------------------------------------------------------
 
+const TOUCH_EMOTES := {&"likes": "<3", &"neutral": "~", &"dislikes": "!"}
+const EARS_FLAT_SECONDS := 0.8
+
+
+## The player's hand touched `zone` (head, ears, back, belly) with `strokes` strokes (a pat
+## is 1). `hand_point` is where the hand is; it defaults to just above the zone. Returns
+## the reaction (&"likes", &"neutral" or &"dislikes").
+func touch(zone: StringName, strokes: int = 1, hand_point: Vector3 = Vector3.INF) -> StringName:
+	if not hand_point.is_finite():
+		hand_point = global_position + Vector3(0.0, 0.6, 0.0)
+		var zone_node: TouchZone = touch_zones.get(zone)
+		if zone_node != null:
+			hand_point = zone_node.global_position + Vector3(0.0, 0.15, 0.0)
+	var was_asleep := sleeping
+	var reaction := brain.on_touched(zone, strokes, was_asleep, hand_point)
+	var text: String = TOUCH_EMOTES.get(reaction, "~")
+	if was_asleep and reaction != &"dislikes":
+		text = "zz " + text
+	show_emote(text, 1.5)
+	if reaction == &"dislikes":
+		_ears_flat_timer = EARS_FLAT_SECONDS
+	return reaction
+
+
+## Close-up mode on this dog: its label shows only emotes, smaller (main.gd sets it).
+func set_closeup(on: bool) -> void:
+	_closeup = on
+	if status_label != null:
+		status_label.pixel_size = _label_pixel_size * (0.45 if on else 1.0)
+
+
+## True while the ears are flattened after a disliked touch.
+func ears_flat() -> bool:
+	return _ears_flat_timer > 0.0
+
+
+## Debug stand-in for the hand tool, kept as the E key and for --autopet soaks.
 func pet() -> void:
 	brain.on_petted(sleeping)
 	if sleeping:
@@ -674,12 +738,18 @@ func _update_visual(delta: float) -> void:
 		_tail_pivot.rotation.y = sin(_anim_time * wag_speed) * wag_amp
 		_tail_pivot.rotation.x = lerpf(-0.25, -1.05, happy)
 
-	# Ears flop down asleep or when unhappy.
+	# Ears flop down asleep or when unhappy, and flatten back after a disliked touch.
 	var droop := maxf(ear_droop, clampf(-mood, 0.0, 1.0) * 0.6)
+	var flat_back := 0.0
+	if _ears_flat_timer > 0.0:
+		_ears_flat_timer -= delta
+		flat_back = -1.1
+	var ear_blend := 1.0 - exp(-18.0 * delta)
 	for i in _ear_pivots.size():
 		var side := -1.0 if i == 0 else 1.0
 		var ear := _ear_pivots[i]
 		ear.rotation.z = lerpf(ear.rotation.z, side * (0.25 + droop * 0.9), blend)
+		ear.rotation.x = lerpf(ear.rotation.x, flat_back, ear_blend)
 
 
 func _update_label(delta: float) -> void:
@@ -690,6 +760,9 @@ func _update_label(delta: float) -> void:
 		return
 	if _emote_timer > 0.0:
 		_emote_timer -= delta
+	if _closeup:
+		status_label.text = _emote if _emote_timer > 0.0 else ""
+		return
 	var doing := "..."
 	if brain.current != null:
 		doing = brain.current.label

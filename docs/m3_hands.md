@@ -13,7 +13,7 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
 
 - [x] 1. Plumbing: physics layers, WorldItem hold/detach, body API additions, DogTouchPrefs,
       TouchZones on the dog, save v2, headless test harness. Soak unchanged.
-- [ ] 2. Close-up mode (enter/exit, camera framing) + HandTool + petting: hover/highlight, strokes -> `Dog.touch()` -> `DogBrain.on_touched()`,
+- [x] 2. Close-up mode (enter/exit, camera framing) + HandTool + petting: hover/highlight, strokes -> `Dog.touch()` -> `DogBrain.on_touched()`,
       stimulus + forced re-eval, `enjoy_pets` and `duck_away` behaviors, overlay HANDS section, tests.
 - [ ] 3. Hand feeding: kibble (from bowl) and treat (from new treat jar) pieces,
       `Dog.feed_from_hand()` -> `DogBrain.on_hand_fed()`, `come_for_food` behavior, tests.
@@ -39,6 +39,52 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
 - Tests: `tests/test_runner.gd` (SUITES dict), `tests/test_suite.gd` (base: `check`, `check_near`,
   `frames`, `game_minutes`, `wait_until`), `tests/test_core.gd`. Add a suite per step
   (`test_petting.gd`, `test_feeding.gd`, `test_ball.gd`) and register it in SUITES.
+
+## What step 2 added
+
+- Close-up: `main.gd` `click_dog()` (Live LMB: select, or close-up if already selected),
+  `enter_closeup(dog)`, `exit_closeup()` (Esc), `closeup_dog`. Tab in close-up moves it to
+  the next dog. `--closeup` starts in it (screenshots). `camera_rig.gd`
+  `enter_closeup/exit_closeup/is_closeup/snap_view`: distance 1.9, pitch -32, zoom 0.9-3.5,
+  panning locked, eased zoom/pitch; exit restores distance, pitch, look height and follow.
+  The close-up dog's 3D label shrinks to emotes only (`Dog.set_closeup`).
+- `HandTool` (`interaction/hand_tool.gd`, node `HandTool` in main.tscn, group `hand_tool`):
+  states off/hover/petting(/carrying later), `hovered_zone`, `last_reaction`, `anchor`
+  (group `player_hands`). `press_zone(zone, point)` pats, `drag_to(point, zone)` strokes,
+  `release()`; mouse input goes through these. `stroke(dog, zone_id, strokes)` for code.
+  `pick_from/release_at/throw_item` are stubs. Top-center hint label in close-up.
+- `Dog.touch(zone, strokes = 1, hand_point = above the zone)` -> reaction; emotes, ears
+  flatten for `EARS_FLAT_SECONDS` (0.8 real s). `Dog.point_away_from(from, min, max)`.
+- `DogBrain.on_touched(zone, strokes, asleep, point)`, `stimuli` (kind -> dict, not saved),
+  `get_stimulus(kind)`, `stimulus_age(kind)`, forced re-eval (`_force_eval`).
+- Behaviors `enjoy_pets`, `duck_away` (registered last). Tests: `tests/test_petting.gd`.
+
+## Decisions (step 2)
+
+- **Touch numbers per stroke** (constants at the top of `dog_brain.gd`): liked: affection
+  2 + 4 x pref, bond 0.05 + 0.15 x pref. Neutral: affection +1. Disliked: affection -1,
+  bond -(0.1 + 0.2 x |pref|). Asleep + liked: affection +1, no bond. Asleep + neutral: as
+  neutral. Asleep + disliked: as disliked, and duck_away (1.0) overrides sleep, which
+  wakes it. No fun gain from strokes (E `pet()` still gives fun, unchanged).
+- **A pat is sent on press** (immediate feedback); travel while held over a zone of the
+  close-up dog adds strokes on the zone under the hand. Travel is measured on a plane
+  through the press point facing the camera, so it doesn't depend on the dog's shape.
+  Travel off the dog doesn't count.
+- **Only the close-up dog responds** to the hand; other dogs' zones are ignored.
+- **Stimuli count from when the brain reacts**: a new stimulus gets its time re-stamped
+  on the forced re-evaluation. Without that, at 60x (a game minute per frame) a touch was
+  already older than the 0.75 min window by the next tick.
+- **Forced re-eval** skips min_duration and the per-frame eval budget; the planner's
+  non-interruptible rule still applies. enjoy_pets (0.95) is above OVERRIDE_SCORE, so a
+  liked touch also interrupts eat/drink/wait_turn; accepted (the dog turns to you).
+- **duck_away** walks to `point_away_from(hand point)`: a fan of directions around
+  "straight away", then `random_point_near`. If the hand is right above the dog it goes
+  forward. A new disliked touch while ducking re-paths from the new spot. Gives up after
+  2 game min.
+- **enjoy_pets** faces the hand only when it's >= 0.3 m out (flat), else just sits; lies
+  for the belly. Keeps 0.5 while running between 0.75 and 1 min after the last touch.
+- Touch log lines merge: the same zone and reaction within 1 game min extends the stroke
+  count instead of adding a decision-log line.
 
 ## Design (approved)
 
