@@ -31,7 +31,10 @@ dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/breeds/     BreedData resources (corgi.tres)
 items/          WorldItem + bowl and bed scenes; the AI reads affordance tags only
-interaction/    Milestone 2: hand cursor and touch zones
+interaction/    Milestone 2: hand cursor and touch zones (TouchZone so far)
+tests/          Headless test runner and suites (--test=all)
+tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)
+docs/           Milestone plans
 ui/debug/       Debug overlay (needs, scores, personality, decision log)
 scenes/         main.tscn (room), main.gd (keys, CLI args), camera_rig.gd
 ```
@@ -62,6 +65,15 @@ Reference result (seed 42, 48 h, attentive owner): idle 90, wander 24, drink 11,
 no need fell below 47 except affection (32). With no owner, hunger and thirst hit 0 by day 2.
 
 All args are documented at the top of `scenes/main.gd`.
+
+## Headless tests
+
+```
+godot --headless --fixed-fps 60 --path . -- --fresh --no-save --seed=42 --test=all
+```
+
+Suites live in `tests/` and run inside the real scene. On Linux, `tools/verify.sh` runs
+import, tests and the soak in one go (`tools/godot.sh` fetches Godot 4.6.1 if needed).
 
 ## Known gaps (by design for this milestone)
 
