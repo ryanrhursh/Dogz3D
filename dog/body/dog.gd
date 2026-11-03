@@ -12,7 +12,14 @@ extends CharacterBody3D
 ## 0 = new random personality each fresh game.
 @export var personality_seed := 0
 @export var walk_speed := 1.2
+## Speed multiplier for set_gait(&"run").
+@export var run_speed_multiplier := 2.2
 @export var turn_speed := 8.0
+## Highest point (world y) the dog can grab something from.
+const MAX_REACH_HEIGHT := 0.45
+## How far off the navmesh an item may be and still be reachable.
+const REACH_SLACK := 0.45
+
 ## Movement speeds up with the sim clock, but only this far, so fast-forward stays readable.
 @export var max_movement_time_scale := 6.0
 @export var show_status_label := true
@@ -24,6 +31,11 @@ extends CharacterBody3D
 var brain := DogBrain.new()
 var sleeping := false
 var pose: StringName = &"stand"
+var gait: StringName = &"walk"
+## The item in the dog's mouth, if any.
+var held_item: WorldItem
+## Zone id -> TouchZone.
+var touch_zones: Dictionary = {}
 
 var _target := Vector3.ZERO
 var _arrive_radius := 0.3
@@ -36,6 +48,7 @@ var _has_face_target := false
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 
 var _body_root: Node3D
+var _mouth: Node3D
 var _tail_pivot: Node3D
 var _ear_pivots: Array[Node3D] = []
 var _anim_time := 0.0
@@ -80,7 +93,10 @@ func _physics_process(delta: float) -> void:
 				dir = _target - global_position
 				dir.y = 0.0
 			dir = dir.normalized()
-			flat = dir * walk_speed * move_scale
+			var speed := walk_speed
+			if gait == &"run":
+				speed *= run_speed_multiplier
+			flat = dir * speed * move_scale
 			_turn_toward(dir, delta * move_scale)
 			_check_stuck(delta)
 	elif _has_face_target and move_scale > 0.0:
@@ -133,12 +149,19 @@ func set_pose(new_pose: StringName) -> void:
 	pose = new_pose
 
 
+## &"walk" or &"run". Behaviors that set run should reset to walk in exit().
+func set_gait(new_gait: StringName) -> void:
+	gait = new_gait
+
+
+## Nearest available item with the affordance that nobody is carrying.
 func find_nearest_item(affordance: StringName) -> WorldItem:
 	var best: WorldItem = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
-		if item == null or not item.has_affordance(affordance) or not item.is_available():
+		if item == null or item.held or not item.has_affordance(affordance) \
+				or not item.is_available():
 			continue
 		var d := global_position.distance_squared_to(item.global_position)
 		if d < best_dist:
@@ -159,6 +182,56 @@ func random_point_near(origin: Vector3, min_dist: float, max_dist: float) -> Vec
 	return NavigationServer3D.map_get_random_point(map_rid, 1, false)
 
 
+## Item with the affordance currently held out by the player's hand, nearest first.
+func find_offered_item(affordance: StringName) -> WorldItem:
+	var best: WorldItem = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("items"):
+		var item := node as WorldItem
+		if item == null or not item.is_held_by_player() or not item.has_affordance(affordance):
+			continue
+		var d := global_position.distance_squared_to(item.global_position)
+		if d < best_dist:
+			best_dist = d
+			best = item
+	return best
+
+
+## True if the dog can walk close enough to put its mouth on `point`
+## (on the navmesh and low enough: not on the table).
+func can_reach(point: Vector3) -> bool:
+	if point.y > MAX_REACH_HEIGHT:
+		return false
+	var map_rid := get_world_3d().navigation_map
+	var on_mesh := NavigationServer3D.map_get_closest_point(map_rid, point)
+	return _flat_distance(on_mesh, point) <= REACH_SLACK
+
+
+## Takes the item in the mouth. Fails if someone else is holding it.
+func pick_up(item: WorldItem) -> bool:
+	if item == null or not is_instance_valid(item) or item.held:
+		return false
+	if held_item != null:
+		drop_held()
+	held_item = item
+	item.attach_to(_mouth)
+	return true
+
+
+## Drops whatever is in the mouth, optionally tossing it.
+func drop_held(velocity: Vector3 = Vector3.ZERO) -> void:
+	if held_item == null:
+		return
+	if is_instance_valid(held_item) and held_item.holder == _mouth:
+		held_item.detach(velocity)
+	held_item = null
+
+
+## The point the mouth is at, for behaviors lining up with items.
+func get_mouth_position() -> Vector3:
+	return _mouth.global_position
+
+
 # --- Player interaction (debug stand-ins until milestone 2) ----------------------
 
 func pet() -> void:
@@ -177,11 +250,17 @@ func show_emote(text: String, seconds: float) -> void:
 func reroll_personality(seed_value: int) -> void:
 	if brain.current != null:
 		brain.interrupt(self)
+	drop_held()
 	sleeping = false
 	set_pose(&"stand")
+	set_gait(&"walk")
 	var roll_rng := RandomNumberGenerator.new()
 	roll_rng.seed = seed_value
-	brain.setup(DogPersonality.roll(breed, roll_rng), seed_value)
+	# Touch prefs roll after personality from the same RNG, so the personality
+	# (and the brain's decision RNG) for a given seed stays what it was.
+	var new_personality := DogPersonality.roll(breed, roll_rng)
+	var prefs := DogTouchPrefs.roll(new_personality, roll_rng)
+	brain.setup(new_personality, seed_value, prefs)
 
 
 # --- Save ------------------------------------------------------------------------
@@ -198,8 +277,10 @@ func to_dict() -> Dictionary:
 
 func from_dict(data: Dictionary) -> void:
 	brain.interrupt(self)
+	drop_held()
 	sleeping = false
 	_moving = false
+	set_gait(&"walk")
 	dog_name = str(data.get("name", dog_name))
 	var p: Array = data.get("pos", [])
 	if p.size() == 3:
@@ -378,8 +459,33 @@ func _build_placeholder() -> void:
 	tail.height = 0.18
 	_add_part(_tail_pivot, tail, coat, Vector3(0.0, 0.09, 0.0), Vector3.ZERO)
 
+	_mouth = Node3D.new()
+	_mouth.name = "Mouth"
+	_mouth.position = Vector3(0.0, 0.43, 0.62)
+	_body_root.add_child(_mouth)
+
+	_build_touch_zones()
+
 	if breed != null:
 		visual_root.scale = Vector3.ONE * breed.size_scale
+
+
+## Touch zones ride on BodyRoot so they follow poses. Milestone 4 moves them onto
+## bone attachments of the rigged model. A zero y size makes a sphere.
+func _build_touch_zones() -> void:
+	var specs := {
+		&"head": [Vector3(0.0, 0.5, 0.4), Vector3(0.15, 0.0, 0.0)],
+		&"ears": [Vector3(0.0, 0.67, 0.33), Vector3(0.28, 0.12, 0.12)],
+		&"back": [Vector3(0.0, 0.47, -0.06), Vector3(0.28, 0.1, 0.5)],
+		&"belly": [Vector3(0.0, 0.2, 0.02), Vector3(0.24, 0.12, 0.42)],
+	}
+	for zone_id: StringName in specs:
+		var spec: Array = specs[zone_id]
+		var zone := TouchZone.new()
+		zone.configure(self, zone_id, spec[1])
+		zone.position = spec[0]
+		_body_root.add_child(zone)
+		touch_zones[zone_id] = zone
 
 
 func _add_part(parent: Node3D, mesh: Mesh, material: Material, pos: Vector3,

@@ -15,6 +15,7 @@ extends Node3D
 ##   --seed=N              fixed personality and decision RNG
 ##   --log                 print every behavior change
 ##   --screenshot=PATH     save a PNG after --screenshot-delay=N real seconds (default 3), then quit
+##   --test=SUITE|all      run headless tests (tests/test_runner.gd), then quit with 0/1
 
 const TIME_SCALES := [1.0, 4.0, 16.0, 60.0]
 
@@ -62,6 +63,21 @@ func _ready() -> void:
 
 	if args.has("screenshot"):
 		_screenshot_and_quit(str(args["screenshot"]), float(args.get("screenshot-delay", "3")))
+
+	if args.has("test"):
+		_run_tests(args["test"])
+
+
+func _run_tests(which: Variant) -> void:
+	var suite := "all"
+	if which is String:
+		suite = which
+	SimClock.time_scale = 60.0
+	_uncap_movement_for_soak()
+	var runner: Node = load("res://tests/test_runner.gd").new()
+	runner.name = "TestRunner"
+	add_child(runner)
+	runner.run(self, suite)
 
 
 ## Saves a PNG of the window after `delay` real seconds, then quits. Needs a real

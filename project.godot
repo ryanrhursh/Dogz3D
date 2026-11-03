@@ -25,6 +25,9 @@ window/size/viewport_height=900
 
 3d_physics/layer_1="world"
 3d_physics/layer_2="dogs"
+3d_physics/layer_3="touch"
+3d_physics/layer_4="items"
+3d_physics/layer_5="item_bounds"
 
 [navigation]
 

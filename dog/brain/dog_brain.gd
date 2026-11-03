@@ -17,6 +17,7 @@ const IdleBehavior := preload("res://dog/brain/behaviors/idle.gd")
 
 var needs := DogNeeds.new()
 var personality := DogPersonality.new()
+var touch_prefs := DogTouchPrefs.new()
 var memory := DogMemory.new()
 var planner := UtilityPlanner.new()
 var rng := RandomNumberGenerator.new()
@@ -34,8 +35,14 @@ var _last_id: StringName = &"none"
 var _end_reason := "start"
 
 
-func setup(p_personality: DogPersonality, seed_value: int) -> void:
+## p_touch_prefs is normally rolled by the Dog alongside the personality. If null,
+## it's rolled from a separate RNG so the decision RNG sequence is unaffected.
+func setup(p_personality: DogPersonality, seed_value: int,
+		p_touch_prefs: DogTouchPrefs = null) -> void:
 	personality = p_personality
+	touch_prefs = p_touch_prefs
+	if touch_prefs == null:
+		touch_prefs = _roll_touch_prefs(seed_value)
 	needs = DogNeeds.new()
 	memory = DogMemory.new()
 	rng.seed = seed_value
@@ -132,6 +139,7 @@ func to_dict() -> Dictionary:
 	return {
 		"needs": needs.to_dict(),
 		"personality": personality.to_dict(),
+		"touch_prefs": touch_prefs.to_dict(),
 		"memory": memory.to_dict(),
 		# 64-bit values don't survive JSON numbers, so store them as strings.
 		"rng_seed": str(rng.seed),
@@ -151,6 +159,13 @@ func from_dict(data: Dictionary) -> void:
 		rng.seed = str(data["rng_seed"]).to_int()
 	if data.has("rng_state"):
 		rng.state = str(data["rng_state"]).to_int()
+	if data.has("touch_prefs"):
+		var t: Dictionary = data["touch_prefs"]
+		touch_prefs = DogTouchPrefs.new()
+		touch_prefs.from_dict(t)
+	else:
+		# Save v1 predates touch zones: roll them from the saved personality.
+		touch_prefs = _roll_touch_prefs(int(rng.seed))
 	cooldowns.clear()
 	_log("loaded")
 
@@ -161,6 +176,12 @@ func _apply_personality() -> void:
 	needs.decay_multipliers[&"energy"] = lerpf(0.85, 1.2, energy)
 	needs.decay_multipliers[&"affection"] = lerpf(0.7, 1.4, personality.get_trait_value(&"sociability"))
 	needs.decay_multipliers[&"hunger"] = lerpf(0.9, 1.15, personality.get_trait_value(&"food_drive"))
+
+
+func _roll_touch_prefs(seed_value: int) -> DogTouchPrefs:
+	var prefs_rng := RandomNumberGenerator.new()
+	prefs_rng.seed = hash([seed_value, "touch_prefs"])
+	return DogTouchPrefs.roll(personality, prefs_rng)
 
 
 func _start(dog: Dog, next: DogBehavior) -> void:

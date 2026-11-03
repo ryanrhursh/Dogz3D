@@ -9,7 +9,8 @@ signal saved(path: String)
 signal loaded(path: String)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+## v1: milestone 1. v2: touch prefs per dog, positions of movable items.
+const SAVE_VERSION := 2
 const MAX_OFFLINE_MINUTES := 8.0 * 60.0
 const AUTOSAVE_EVERY_HOURS := 3
 
@@ -84,8 +85,11 @@ func load_game() -> bool:
 	var data: Dictionary = parsed
 
 	var version: int = int(data.get("version", 0))
-	if version != SAVE_VERSION:
-		push_warning("Save version %d, expected %d. Loading anyway." % [version, SAVE_VERSION])
+	if version > SAVE_VERSION:
+		push_warning("Save version %d is newer than %d. Loading anyway." % [version, SAVE_VERSION])
+	elif version < SAVE_VERSION:
+		# Older formats load cleanly: missing fields keep defaults or get rolled.
+		print("SaveManager: upgrading save from v%d to v%d." % [version, SAVE_VERSION])
 
 	var clock: Dictionary = data.get("clock", {})
 	SimClock.from_dict(clock)
