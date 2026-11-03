@@ -14,11 +14,15 @@ extends Node3D
 ##   --autopet             pet any dog whose affection drops below 40
 ##   --seed=N              fixed personality and decision RNG (dog i gets N + i * 7919)
 ##   --dogs=N              start with N dogs (default 1)
+##   --bowls=N             N food and N water bowls (default 1, max 4), for big-pack soaks
 ##   --log                 print every behavior change
 ##   --screenshot=PATH     save a PNG after --screenshot-delay=N real seconds (default 3), then quit
 ##   --test=SUITE|all      run headless tests (tests/test_runner.gd), then quit with 0/1
 
 const TIME_SCALES := [1.0, 4.0, 16.0, 60.0]
+const MAX_BOWL_PAIRS := 4
+## Extra bowl pairs go west along the north wall, this far apart.
+const BOWL_PAIR_SPACING := 1.3
 const WORLD_LAYER := 1
 const DOGS_LAYER := 2
 
@@ -27,6 +31,7 @@ const DOGS_LAYER := 2
 # Untyped on purpose: their scripts have no class_name, so calls resolve at runtime.
 @onready var overlay = $DebugOverlay
 @onready var camera_rig = $CameraRig
+@onready var dog_panel: DogPanel = $DogPanel
 @onready var food_bowl: WorldItem = $Items/FoodBowl
 @onready var water_bowl: WorldItem = $Items/WaterBowl
 
@@ -38,6 +43,9 @@ var _autopet := false
 var _refills := 0
 var _pets := 0
 var _lowest_seen: Dictionary = {}
+## Wall-clock microseconds between frames, for the soak summary's frame time line.
+var _frame_usecs: PackedInt64Array = PackedInt64Array()
+var _last_frame_usec := 0
 
 
 func _ready() -> void:
@@ -51,6 +59,10 @@ func _ready() -> void:
 	var seed_value := randi()
 	if args.has("seed"):
 		seed_value = int(args["seed"])
+		# The engine's global RNG drives NavigationServer3D.map_get_random_point (the
+		# random_point_near fallback). Seed it too, so seeded runs are reproducible.
+		seed(seed_value)
+	_add_bowl_pairs(int(args.get("bowls", "1")) - 1)
 	pack.populate(int(args.get("dogs", "1")), seed_value)
 	camera_rig.set_target(pack.selected, true)
 	if not args.has("fresh") and SaveManager.has_save():
@@ -98,12 +110,20 @@ func _screenshot_and_quit(path: String, delay: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	if _quit_after_minutes > 0.0:
+		var now := Time.get_ticks_usec()
+		if _last_frame_usec > 0:
+			_frame_usecs.append(now - _last_frame_usec)
+		_last_frame_usec = now
 	for dog in pack.dogs:
 		for need: StringName in _lowest_seen:
 			_lowest_seen[need] = minf(float(_lowest_seen[need]), dog.brain.needs.get_value(need))
 
 	if _autofeed:
-		for bowl: WorldItem in [food_bowl, water_bowl]:
+		for node in get_tree().get_nodes_in_group("items"):
+			var bowl := node as WorldItem
+			if bowl == null or not bowl.consumable or bowl.free_when_empty:
+				continue
 			if bowl.fill < 0.05:
 				bowl.refill()
 				_refills += 1
@@ -163,6 +183,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera_rig.toggle_follow()
 		KEY_F3:
 			overlay.toggle()
+		KEY_I:
+			dog_panel.toggle()
 		KEY_F5:
 			if SaveManager.save_game() and pack.selected != null:
 				pack.selected.show_emote("(saved)", 1.0)
@@ -181,6 +203,16 @@ func _unhandled_input(event: InputEvent) -> void:
 func _set_speed(index: int) -> void:
 	SimClock.paused = false
 	SimClock.time_scale = TIME_SCALES[index]
+
+
+## Debug: more bowls for a big pack. Pair k sits west of the first pair along the wall.
+func _add_bowl_pairs(extra: int) -> void:
+	for k in range(1, mini(extra, MAX_BOWL_PAIRS - 1) + 1):
+		for original: WorldItem in [food_bowl, water_bowl]:
+			var copy: WorldItem = load(original.scene_file_path).instantiate()
+			copy.name = "%s%d" % [original.name, k + 1]
+			copy.position = original.position + Vector3(-BOWL_PAIR_SPACING * k, 0.0, 0.0)
+			original.get_parent().add_child(copy)
 
 
 ## The dog under a screen position (its body or a touch zone), or null.
@@ -205,6 +237,7 @@ func pick_dog_at(screen_pos: Vector2) -> Dog:
 
 func _on_selection_changed(dog: Dog) -> void:
 	overlay.dog = dog
+	dog_panel.dog = dog
 	camera_rig.set_target(dog, false)
 
 
@@ -267,6 +300,23 @@ func _print_summary() -> void:
 	print("Lowest seen:  %s" % ", ".join(low_line))
 	print("Bowl refills: %d   Pets: %d   Bond: %.1f   Mood: %+.2f" % [
 			_refills, _pets, bond_sum / n, mood_sum / n])
+	_print_frame_time()
+
+
+## Wall-clock frame time (process plus all physics substeps). Not part of the baseline:
+## it depends on the machine.
+func _print_frame_time() -> void:
+	if _frame_usecs.is_empty():
+		return
+	var sorted := _frame_usecs.duplicate()
+	sorted.sort()
+	var total := 0
+	for usec in sorted:
+		total += usec
+	var count := sorted.size()
+	print("Frame time:   avg %.2f ms, p95 %.2f ms, max %.2f ms over %d frames (%d physics ticks/s)" % [
+			float(total) / count / 1000.0, float(sorted[floori(count * 0.95)]) / 1000.0,
+			float(sorted[count - 1]) / 1000.0, count, Engine.physics_ticks_per_second])
 
 
 ## At high soak speeds, walking must keep pace with game time or every trip

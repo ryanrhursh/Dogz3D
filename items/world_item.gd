@@ -40,6 +40,8 @@ var held := false
 var holder: Node3D
 
 var _users: Array[Node] = []
+## Dogs waiting in line for a slot, first come first served (not saved).
+var _waiting: Array[Node] = []
 
 
 func _ready() -> void:
@@ -75,12 +77,36 @@ func consume(amount: float) -> float:
 	return taken
 
 
-## True if `user` already has a claim or there's a free slot.
+## True if `user` already has a claim or there's a free slot it may take. When dogs are
+## waiting in line, a free slot goes to the front of the line, so nobody cuts in.
 func is_free_for(user: Node) -> bool:
 	_prune_users()
 	if max_users <= 0 or _users.has(user):
 		return true
-	return _users.size() < max_users
+	var free := max_users - _users.size()
+	if free <= 0:
+		return false
+	var place := _waiting.find(user)
+	if place == -1:
+		return _waiting.size() < free
+	return place < free
+
+
+## Joins the line for this item (no-op if already in it).
+func enqueue(user: Node) -> void:
+	_prune_users()
+	if not _waiting.has(user) and not _users.has(user):
+		_waiting.append(user)
+
+
+func dequeue(user: Node) -> void:
+	_waiting.erase(user)
+
+
+## 0 = front of the line, -1 = not waiting.
+func queue_position(user: Node) -> int:
+	_prune_users()
+	return _waiting.find(user)
 
 
 ## True if a friend could squeeze in: the normal slots are full, a share slot is free.
@@ -96,6 +122,7 @@ func reserve(user: Node, shared: bool = false) -> bool:
 		return false
 	if not _users.has(user):
 		_users.append(user)
+	_waiting.erase(user)
 	return true
 
 
@@ -118,6 +145,9 @@ func _prune_users() -> void:
 	for i in range(_users.size() - 1, -1, -1):
 		if not is_instance_valid(_users[i]):
 			_users.remove_at(i)
+	for i in range(_waiting.size() - 1, -1, -1):
+		if not is_instance_valid(_waiting[i]):
+			_waiting.remove_at(i)
 
 
 ## The node that moves in the world: the physics body if there is one, else self.
@@ -188,6 +218,15 @@ func get_approach_point(from: Vector3) -> Vector3:
 	if offset.length() < 0.01:
 		offset = Vector3.BACK
 	return global_position + offset.normalized() * approach_radius
+
+
+## A spot `distance` from the item on the `from` side, where a dog waits its turn.
+func get_wait_point(from: Vector3, distance: float) -> Vector3:
+	var offset := from - global_position
+	offset.y = 0.0
+	if offset.length() < 0.01:
+		offset = Vector3.BACK
+	return global_position + offset.normalized() * distance
 
 
 func to_dict() -> Dictionary:

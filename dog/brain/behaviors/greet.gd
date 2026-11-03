@@ -4,6 +4,8 @@ extends DogBehavior
 ##
 ## Scores 0 when no other awake dog is within RANGE, so a lone dog never picks it.
 
+## Game minutes between partner scans after one found nobody (scans are the costly part).
+const SCAN_MINUTES := 5.0
 ## Flat metres to look for a dog to greet.
 const RANGE := 6.0
 ## Close enough to sniff.
@@ -32,6 +34,8 @@ var _retarget := 0.0
 var _sniff_left := 0.0
 var _sniffing := false
 var _last_done := -INF
+## When a scan for a partner last came up empty; skip rescanning for SCAN_MINUTES.
+var _empty_scan_at := -INF
 
 
 func _init() -> void:
@@ -51,12 +55,11 @@ func score(dog: Dog) -> float:
 	if needs.get_value(&"energy") < 20.0:
 		return 0.0
 	var memory := dog.brain.memory
-	_candidate = dog.find_nearest_dog(RANGE, func(info: Dictionary) -> bool:
-		var doing: StringName = info["doing"]
-		return not bool(info["sleeping"]) and doing != &"play_together" \
-				and doing != &"eat" and doing != &"drink" \
-				and memory.minutes_since_greeted(str(info["id"]), now) >= REGREET_MINUTES)
+	if now - _empty_scan_at < SCAN_MINUTES:
+		return 0.0
+	_candidate = _find_partner(dog, now)
 	if _candidate == "":
+		_empty_scan_at = now
 		return 0.0
 	var s := (0.08 + needs.urgency(&"affection") * 0.2) * trait_mod(dog, &"sociability", 0.6, 1.5)
 	if not memory.knows(_candidate):
@@ -64,6 +67,21 @@ func score(dog: Dog) -> float:
 	if memory.get_affinity(_candidate) < -0.3:
 		s *= 0.3
 	return clampf(s, 0.0, 0.7)
+
+
+## Nearest awake dog in range, not busy eating, drinking or playing, not greeted lately.
+## Checks this dog's own memory first so most dogs are ruled out without get_dog_info.
+func _find_partner(dog: Dog, now: float) -> String:
+	var memory := dog.brain.memory
+	for other in dog.dogs_near(RANGE):
+		if memory.minutes_since_greeted(other, now) < REGREET_MINUTES:
+			continue
+		var info := dog.get_dog_info(other)
+		var doing: StringName = info["doing"]
+		if not bool(info["sleeping"]) and doing != &"play_together" \
+				and doing != &"eat" and doing != &"drink":
+			return other
+	return ""
 
 
 func enter(dog: Dog) -> void:

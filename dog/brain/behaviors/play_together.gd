@@ -6,6 +6,8 @@ extends DogBehavior
 ##
 ## Scores 0 with no other dog near and no invitation, so a lone dog never picks it.
 
+## Game minutes between partner scans after one found nobody (scans are the costly part).
+const SCAN_MINUTES := 5.0
 const RANGE := 7.0
 ## Energy needed to start; play stops below STOP_ENERGY.
 const MIN_ENERGY := 40.0
@@ -41,6 +43,8 @@ var _duration := 0.0
 var _tag_cooldown := 0.0
 var _retarget := 0.0
 var _last_done := -INF
+## When a scan for a partner last came up empty; skip rescanning for SCAN_MINUTES.
+var _empty_scan_at := -INF
 
 
 func _init() -> void:
@@ -71,17 +75,15 @@ func score(dog: Dog) -> float:
 			var s := 0.45 + needs.urgency(&"fun") * 0.3 + memory.get_affinity(inviter) * 0.2
 			return clampf(s * trait_mod(dog, &"energy", 0.85, 1.2), 0.0, 0.85)
 
-	if SimClock.total_minutes - _last_done < GAP_MINUTES or energy < MIN_ENERGY:
+	var now := SimClock.total_minutes
+	if now - _last_done < GAP_MINUTES or energy < MIN_ENERGY:
 		return 0.0
 	# Start a game with a dog we've met and like, that is free to play.
-	_candidate = dog.find_nearest_dog(RANGE, func(info: Dictionary) -> bool:
-		var doing: StringName = info["doing"]
-		var other := str(info["id"])
-		return not bool(info["sleeping"]) \
-				and (doing == &"idle" or doing == &"wander" or doing == &"") \
-				and memory.knows(other) and memory.get_affinity(other) >= MIN_AFFINITY \
-				and float(info["affinity_to_me"]) >= ACCEPT_MIN_AFFINITY)
+	if now - _empty_scan_at < SCAN_MINUTES:
+		return 0.0
+	_candidate = _find_partner(dog)
 	if _candidate == "":
+		_empty_scan_at = now
 		return 0.0
 	_invited = false
 	var energy_gate := clampf((energy - MIN_ENERGY) / 30.0, 0.0, 1.0)
@@ -89,6 +91,21 @@ func score(dog: Dog) -> float:
 			* trait_mod(dog, &"energy", 0.7, 1.3) * trait_mod(dog, &"sociability", 0.8, 1.2) \
 			* (0.8 + memory.get_affinity(_candidate) * 0.6)
 	return clampf(s, 0.0, 0.8)
+
+
+## Nearest dog in range that this dog knows and likes, that likes it back well enough
+## and is free (awake, idle or wandering). Own memory is checked before get_dog_info.
+func _find_partner(dog: Dog) -> String:
+	var memory := dog.brain.memory
+	for other in dog.dogs_near(RANGE):
+		if not memory.knows(other) or memory.get_affinity(other) < MIN_AFFINITY:
+			continue
+		var info := dog.get_dog_info(other)
+		var doing: StringName = info["doing"]
+		if not bool(info["sleeping"]) and (doing == &"idle" or doing == &"wander" or doing == &"") \
+				and float(info["affinity_to_me"]) >= ACCEPT_MIN_AFFINITY:
+			return other
+	return ""
 
 
 func enter(dog: Dog) -> void:

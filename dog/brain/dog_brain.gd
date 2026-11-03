@@ -16,6 +16,7 @@ const SleepBehavior := preload("res://dog/brain/behaviors/sleep.gd")
 const IdleBehavior := preload("res://dog/brain/behaviors/idle.gd")
 const GreetBehavior := preload("res://dog/brain/behaviors/greet.gd")
 const PlayTogetherBehavior := preload("res://dog/brain/behaviors/play_together.gd")
+const WaitTurnBehavior := preload("res://dog/brain/behaviors/wait_turn.gd")
 
 ## Affinity and affection a dog gains when another dog greets it nicely.
 const GREETED_AFFINITY := 0.05
@@ -71,10 +72,11 @@ func setup(p_personality: DogPersonality, seed_value: int,
 		ConsumeBehavior.new(&"drink", "Drink", &"thirst", &"water", &"", &"eat"),
 		SleepBehavior.new(),
 		IdleBehavior.new(),
-		# Social behaviors go last and score 0 with no other dog near, so a lone dog
+		# Pack behaviors go last and score 0 with no other dog around, so a lone dog
 		# decides exactly as it did before they existed.
 		GreetBehavior.new(),
 		PlayTogetherBehavior.new(),
+		WaitTurnBehavior.new(),
 	]
 	planner.behaviors = list
 
@@ -98,7 +100,9 @@ func tick(dog: Dog, game_minutes: float) -> void:
 	var due := _since_eval >= EVAL_INTERVAL_MINUTES
 	var may_switch := current == null or not current.interruptible \
 			or minutes_in_current >= current.min_duration
-	if current == null or (due and may_switch):
+	# A dog with nothing to do always chooses now. A routine re-evaluation waits for a
+	# slot in this frame's budget, so a big pack spreads its thinking over frames.
+	if current == null or (due and may_switch and dog.take_eval_slot()):
 		_since_eval = 0.0
 		var next := planner.choose(dog, current, cooldowns, rng)
 		if next != current:

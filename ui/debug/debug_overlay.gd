@@ -5,7 +5,7 @@ extends CanvasLayer
 const REFRESH_SECONDS := 0.1
 const NEED_ORDER := [&"hunger", &"thirst", &"energy", &"fun", &"affection"]
 const HELP_TEXT := "RMB drag orbit · wheel zoom · WASD pan · C follow dog    " \
-		+ "LMB/Tab select dog · N adopt    1-4 speed · Space pause    " \
+		+ "LMB/Tab select dog · N adopt · I dog card    1-4 speed · Space pause    " \
 		+ "E pet · F refill food · G refill water    " \
 		+ "F3 overlay · F5 save · F9 load · F8 re-roll dog"
 

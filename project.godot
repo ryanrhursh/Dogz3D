@@ -33,6 +33,7 @@ window/size/viewport_height=900
 
 3d/default_cell_size=0.125
 3d/default_cell_height=0.125
+world/map_use_async_iterations=false
 
 [rendering]
 

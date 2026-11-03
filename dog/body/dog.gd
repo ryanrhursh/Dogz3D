@@ -26,9 +26,16 @@ const SEPARATION_WEIGHT := 1.2
 const SEPARATION_ARRIVE_ZONE := 1.0
 ## Game minutes an invitation (play) stays open.
 const INVITE_MINUTES := 4.0
+## Re-evaluations allowed per frame on top of the pack's average need (see evals_per_frame).
+const EVAL_SLACK := 2
 
 ## Every dog in the simulation (cheaper than querying the group each physics tick).
 static var _all_dogs: Array = []
+## dog_id -> Dog for the same dogs.
+static var _dogs_by_id: Dictionary = {}
+## Per-frame budget of routine brain re-evaluations, shared by all dogs.
+static var _eval_frame := -1
+static var _evals_left := 0
 
 ## Movement speeds up with the sim clock, but only this far, so fast-forward stays readable.
 @export var max_movement_time_scale := 6.0
@@ -48,6 +55,8 @@ var held_item: WorldItem
 var touch_zones: Dictionary = {}
 ## Items this dog has claimed a slot on (bowl it's eating from, its bed).
 var _claims: Array[WorldItem] = []
+## Items this dog is waiting in line for.
+var _queues: Array[WorldItem] = []
 ## dog_id of the dog this one is greeting or playing with, "" if none. Others read it via
 ## get_dog_info, so a game of chase only runs while both dogs point at each other.
 var social_partner_id := ""
@@ -77,6 +86,7 @@ func _ready() -> void:
 	add_to_group("dogs")
 	if not _all_dogs.has(self):
 		_all_dogs.append(self)
+	_dogs_by_id[dog_id] = self
 	_build_placeholder()
 	var seed_value := personality_seed
 	if seed_value == 0:
@@ -220,6 +230,39 @@ func find_offered_item(affordance: StringName) -> WorldItem:
 	return best
 
 
+## Nearest usable item with the affordance that is busy for this dog right now (all
+## slots taken, or others are waiting first). For waiting in line, not for using.
+func find_busy_item(affordance: StringName) -> WorldItem:
+	var best: WorldItem = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("items"):
+		var item := node as WorldItem
+		if item == null or item.held or not item.has_affordance(affordance) \
+				or not item.is_available() or item.is_free_for(self):
+			continue
+		var d := global_position.distance_squared_to(item.global_position)
+		if d < best_dist:
+			best_dist = d
+			best = item
+	return best
+
+
+## Gets in line for a busy item. Leave with leave_queue in the behavior's exit().
+## Claiming the item also takes the dog out of the line.
+func join_queue(item: WorldItem) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	item.enqueue(self)
+	if not _queues.has(item):
+		_queues.append(item)
+
+
+func leave_queue(item: WorldItem) -> void:
+	_queues.erase(item)
+	if item != null and is_instance_valid(item):
+		item.dequeue(self)
+
+
 ## Nearest item with the affordance that is full, but only with dogs that are friends
 ## with this one both ways (affinity >= min_affinity), and that has a share slot free.
 ## Claim it with claim_item(item, true).
@@ -272,12 +315,37 @@ func release_all_claims() -> void:
 	_prune_claims()
 	for item in _claims.duplicate():
 		release_item(item)
+	for i in _queues.size():
+		if is_instance_valid(_queues[i]):
+			_queues[i].dequeue(self)
+	_queues.clear()
 
 
 func _prune_claims() -> void:
 	for i in range(_claims.size() - 1, -1, -1):
 		if not is_instance_valid(_claims[i]):
 			_claims.remove_at(i)
+
+
+## The brain asks before a routine re-evaluation. False means the frame's budget is used
+## up; the brain stays due and asks again next frame.
+func take_eval_slot() -> bool:
+	var frame := Engine.get_process_frames()
+	if frame != _eval_frame:
+		_eval_frame = frame
+		_evals_left = evals_per_frame()
+	if _evals_left <= 0:
+		return false
+	_evals_left -= 1
+	return true
+
+
+## Enough slots for the pack's average evaluation rate at the current speed, plus slack:
+## a lone dog is never held back, and a burst of due dogs is spread over a few frames.
+static func evals_per_frame() -> int:
+	var per_frame := float(_all_dogs.size()) * SimClock.last_delta_minutes \
+			/ DogBrain.EVAL_INTERVAL_MINUTES
+	return ceili(per_frame) + EVAL_SLACK
 
 
 # --- Other dogs (brains never touch other brains; they ask the body) ------------
@@ -298,6 +366,28 @@ func find_nearest_dog(max_dist: float, filter: Callable = Callable()) -> String:
 		best_dist = d
 		best_id = other.dog_id
 	return best_id
+
+
+## dog_ids of the other dogs within `max_dist` (flat metres), nearest first. Cheaper than
+## find_nearest_dog when the behavior can rule most dogs out from its own memory before
+## asking get_dog_info.
+func dogs_near(max_dist: float) -> PackedStringArray:
+	var dists := PackedFloat32Array()
+	var ids := PackedStringArray()
+	var max_sq := max_dist * max_dist
+	var here := global_position
+	for other: Dog in _all_dogs:
+		if other == self:
+			continue
+		var there := other.global_position
+		var dx := there.x - here.x
+		var dz := there.z - here.z
+		var d_sq := dx * dx + dz * dz
+		if d_sq <= max_sq:
+			var at := dists.bsearch(d_sq)
+			dists.insert(at, d_sq)
+			ids.insert(at, other.dog_id)
+	return ids
 
 
 ## What this dog can observe about another dog: id, name, position, distance,
@@ -371,10 +461,10 @@ func _info_for(asker: Dog) -> Dictionary:
 func _dog_by_id(id: String) -> Dog:
 	if id == "" or id == dog_id:
 		return null
-	for other: Dog in _all_dogs:
-		if is_instance_valid(other) and other.dog_id == id:
-			return other
-	return null
+	var other: Dog = _dogs_by_id.get(id)
+	if other == null or not is_instance_valid(other):
+		return null
+	return other
 
 
 ## Sum of pushes away from dogs within SEPARATION_RADIUS. Zero when no dog is that
@@ -471,7 +561,7 @@ func retire() -> void:
 	social_partner_id = ""
 	_invites.clear()
 	remove_from_group("dogs")
-	_all_dogs.erase(self)
+	_unregister()
 	set_process(false)
 	set_physics_process(false)
 
@@ -507,7 +597,13 @@ func from_dict(data: Dictionary) -> void:
 # --- Internals -------------------------------------------------------------------
 
 func _exit_tree() -> void:
+	_unregister()
+
+
+func _unregister() -> void:
 	_all_dogs.erase(self)
+	if _dogs_by_id.get(dog_id) == self:
+		_dogs_by_id.erase(dog_id)
 
 
 func _turn_toward(dir: Vector3, scaled_delta: float) -> void:

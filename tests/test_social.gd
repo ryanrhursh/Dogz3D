@@ -116,7 +116,10 @@ func test_greet_skips_sleeping_dog() -> void:
 	b.sleeping = true
 	check(_behavior(dog, &"greet").score(dog) == 0.0, "nobody to greet when the dog sleeps")
 	b.sleeping = false
-	check(_behavior(dog, &"greet").score(dog) > 0.0, "greets once it's awake")
+	var greet := _behavior(dog, &"greet")
+	check(greet.score(dog) == 0.0, "an empty scan isn't repeated right away")
+	greet._empty_scan_at = -INF
+	check(greet.score(dog) > 0.0, "greets once it's awake")
 
 
 func test_play_together() -> void:

@@ -10,11 +10,13 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 
 - M1 gray box: DONE (needs, utility AI, capsule dog, navmesh room, day/night, save/load,
   debug overlay).
-- M2 Pack (many dogs, selection, shared items): IN PROGRESS. See `docs/m2_pack.md`.
-  Steps 1 (pack and selection) and 2 (dog to dog: separation, relationships, greet,
-  play together, bed sharing) are done. NEXT: step 3, pack scale and UI.
-- M3 Hands (close-up mode): step 1 of 5 (plumbing and test harness) is done; the rest waits
-  for M2. See `docs/m3_hands.md`.
+- M2 Pack (many dogs, selection, shared items): DONE. See `docs/m2_pack.md`: pack and
+  selection; dog to dog (separation, relationships, greet, play together, bed sharing);
+  pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
+  deterministic pack soak).
+- NEXT: M3 Hands steps 2–5 (see `docs/m3_hands.md`).
+- M3 Hands (close-up mode): step 1 of 5 (plumbing and test harness) is done. See
+  `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
   roadmap.
 
@@ -33,9 +35,10 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   Behaviors touch the world only through the Dog body API in `dog/body/dog.gd`
   (go_to, go_to_item, face_point, set_pose, set_gait, find_nearest_item, find_offered_item,
   random_point_near, can_reach, pick_up, drop_held, get_mouth_position, claim_item,
-  release_item, find_shared_item; for other dogs find_nearest_dog, get_dog_info,
-  invite_dog, get_invite, notify_dog, set_social_partner). A behavior that claims an item
-  releases it in exit().
+  release_item, find_shared_item, find_busy_item, join_queue, leave_queue; for other dogs
+  find_nearest_dog, dogs_near, get_dog_info, invite_dog, get_invite, notify_dog,
+  set_social_partner). A behavior that claims an item, or joins its line, releases or
+  leaves it in exit().
 - Everything that simulates uses `SimClock.last_delta_minutes` (game minutes), never the
   raw engine delta. Movement uses real delta scaled by a capped time scale.
 - The AI reads item affordance tags (`WorldItem.affordances`), never item names.
@@ -61,8 +64,10 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 
 ## Verify every change
 
-Linux: `tools/verify.sh` does all of it (import, tests, one-dog soak, 12-dog pack soak)
-in about a minute, and prints VERIFY OK or the offending lines. `tools/godot.sh` downloads
+Linux: `tools/verify.sh` does all of it (import, tests, one-dog soak, 12-dog pack soak,
+both soaks checked against their exact baselines) in about a minute, and prints VERIFY OK
+or the offending lines. `tools/verify.sh pack30` adds a 30-dog soak (not in the default
+run). `tools/godot.sh` downloads
 and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows, point `GODOT` at
 `Godot_v4.6.1-stable_win64_console.exe` and run the steps by hand.
 
@@ -73,7 +78,7 @@ and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows
    `GODOT --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log`
    Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 90, wander 24,
    drink 11, eat 9, sleep 5 (exact on 4.6.1 Linux headless). Add `--dogs=12` for the pack
-   soak. Its counts vary slightly run to run (see `docs/m2_pack.md`), so check only for
-   errors and sane needs.
+   soak, also exact (baseline in `tools/verify.sh` and `docs/m2_pack.md`). `--bowls=N`
+   adds bowl pairs for big packs. The summary ends with a wall-clock `Frame time:` line.
 4. Screenshot (needs a real renderer, not --headless):
    `GODOT --path . -- --fresh --no-save --screenshot=shot.png --screenshot-delay=4`

@@ -27,17 +27,13 @@ it. Dogs share bowls and beds without piling up, and they notice each other.
   - Relationships: `DogMemory.relationships`, dog_id mapped to -1..1 affinity.
   - Behaviors: `greet`, `play_together`, bed sharing for dogs with high affinity.
   - Body API: `find_nearest_dog(max_dist, filter)`, `get_dog_info(id)` and friends.
-- [ ] 3. **Pack scale and UI.**
-  - Soak with `--dogs=30` and record frame time.
-  - Stagger brain evaluations across frames.
-  - Bowl contention: a `wait_turn` behavior so a dog waits near a busy bowl instead of
-    starving.
-  - Player-facing info panel for the selected dog (name, mood, needs, top traits, bond),
-    separate from the F3 debug overlay.
-  - Make the multi-dog soak deterministic. It currently varies run to run (e.g. wander
-    418 vs 426 over 12 dogs). The likely cause is asynchronous navigation map/path updates;
-    check `navigation/world/map_use_async_iterations` and path query timing. Then record an
-    exact pack baseline.
+- [x] 3. **Pack scale and UI.** Done; see "Step 3 outcome" below.
+  - 30-dog soak with frame time recorded.
+  - Brain evaluations staggered across frames.
+  - `wait_turn`: a dog waits in line near a busy bowl instead of going without.
+  - Player-facing dog card for the selected dog (I toggles), separate from F3.
+  - The multi-dog soak is deterministic, and its exact baseline is checked by
+    `tools/verify.sh`.
 
 ## Step 1 outcome (decisions to keep)
 
@@ -91,7 +87,7 @@ it. Dogs share bowls and beds without piling up, and they notice each other.
 - Both social behaviors are registered last, score 0 with no dog near, and only use
   `brain.rng` in enter(). While running they return a fixed continue score, so they aren't
   dropped just because the partner no longer passes the "free to play" filter.
-- The one-dog seed-42 soak is still exact. Reference 12-dog run: greet ~265, play ~285,
+- The one-dog seed-42 soak is still exact. Reference 12-dog run (before step 3): greet ~265, play ~285,
   wander ~215, idle ~770; every dog knows all 11 others and has 1–4 friends after 48 h;
   about 4 shared-bed sleeps. Bond averages ~26 (was ~30) because dogs need petting a
   little less often. Lowest thirst ~30–34 from the single water bowl (step 3's wait_turn).
@@ -100,3 +96,51 @@ it. Dogs share bowls and beds without piling up, and they notice each other.
 - Save v3 adds relationships. `SaveManager.migrate(data)` upgrades older save
   dictionaries one version step at a time (v2 -> v3 adds empty relationships) and is tested
   directly and through a real v2 file.
+
+## Step 3 outcome (decisions to keep)
+
+- Determinism: the run-to-run drift came from `random_point_near`'s fallback,
+  `NavigationServer3D.map_get_random_point`, which uses the engine's global RNG (seeded
+  randomly at startup). `main.gd` now calls `seed(N)` for `--seed=N`. Found by diffing
+  per-frame dog positions of two runs. `navigation/world/map_use_async_iterations=false` is
+  also set so the navmesh sync can't land on a different frame; it alone did not fix it.
+- Exact baselines (Godot 4.6.1 Linux headless, seed 42, 48 h), checked by `tools/verify.sh`
+  (it fails with BASELINE CHANGED; update both there and here when a change is intended):
+  - One dog: idle 90, wander 24, drink 11, eat 9, sleep 5 (unchanged since M1).
+  - 12 dogs: idle 656, play_together 266, greet 242, wander 174, wait_turn 106, sleep 97,
+    eat 57, drink 48. Lowest thirst 37, lowest hunger 47.
+- Frame time (wall clock, this 4-core cloud container; `Frame time:` line in every soak
+  summary, not part of the baseline):
+
+  | Dogs | 1x (60 physics ticks/s) | 60x soak (600 ticks/s) |
+  |------|-------------------------|------------------------|
+  | 1    | 0.4 ms                  | 2.6 ms                 |
+  | 12   | 1.3 ms                  | 6.8 ms                 |
+  | 30   | 2.7 ms (p95 3.9)        | 14.4 ms (p95 19.8)     |
+
+  At 60x, the brains of 30 dogs cost about 3 ms per frame and physics about 5 ms. Before the
+  optimizations below, the brains cost 6 ms, mostly in greet and play_together scoring.
+- Cheaper social scans: `Dog.dogs_near(max_dist)` returns ids nearest first (native
+  `bsearch` insert, no lambda sort), so behaviors rule dogs out from their own memory before
+  calling `get_dog_info`. A scan that finds nobody isn't repeated for 5 game minutes
+  (`SCAN_MINUTES`). Dogs are looked up by id through a static dictionary.
+- Stagger: a routine re-evaluation needs a slot from a per-frame budget,
+  `Dog.take_eval_slot()`. Budget = ceil(dogs × game minutes this frame / EVAL_INTERVAL) + 2,
+  which covers the pack's average evaluation rate and spreads bursts over a few frames. A
+  dog with no current behavior always chooses at once. One dog is never held back, so the
+  baseline is unchanged. Determinism holds (tree order).
+- `wait_turn`: one behavior covering hunger and thirst. It scores like eat/drink, but only
+  when no bowl is free for the dog and one is busy. The dog joins the bowl's line
+  (`WorldItem.enqueue`, FIFO, not saved), sits 1.1 m away (+0.5 m per place in line) facing
+  it, and when its turn comes it runs the regular consume steps itself. A free slot goes to
+  the front of the line (`is_free_for` checks the line), so nobody cuts in, and claiming
+  takes the dog out of the line. Not interruptible except by an emergency; gives up after
+  90 min. Body API: `find_busy_item`, `join_queue`, `leave_queue`.
+- Bowl capacity: one water bowl can't serve 30 dogs (about 60 minutes of drinking per game
+  hour). With one pair, thirst hit 0. `--bowls=N` (debug, max 4) adds bowl pairs along the
+  north wall, and `verify.sh pack30` runs 30 dogs with 2 pairs: lowest thirst 34, hunger 41.
+  How many bowls a pack needs belongs to the economy (M4: troughs, staff refills).
+- Dog card (`ui/dog_panel.gd`, `DogPanel`, bottom-right, I toggles): name and breed,
+  "Feeling great/happy/okay/low/miserable", what it's doing (and with whom), five need bars
+  (Food, Water, Energy, Fun, Love), the three traits furthest from average as words, bond
+  with a tier word, and best friend (affinity >= 0.5). Static helpers are unit-tested.

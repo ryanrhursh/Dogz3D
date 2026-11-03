@@ -15,7 +15,8 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | C | Re-follow the dog after panning |
 | 1 2 3 4 | Time scale 1x, 4x, 16x, 60x |
 | Space | Pause |
-| LMB on a dog / Tab | Select a dog (camera follows it, overlay shows it) |
+| LMB on a dog / Tab | Select a dog (camera follows it, card and overlay show it) |
+| I | Toggle the dog card (the selected dog's mood, needs, traits, bond, best friend) |
 | N | Adopt another dog (debug) |
 | E | Pet the selected dog (debug fallback for the milestone 3 hand tool) |
 | F / G | Refill food / water bowl |
@@ -31,7 +32,8 @@ Change `SimClock.minutes_per_real_second` to tune it.
 ```
 sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
-dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle
+dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
+                wait_turn
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
@@ -40,7 +42,8 @@ interaction/    Milestone 3: hand tool and touch zones (TouchZone so far)
 tests/          Headless test runner and suites (--test=all)
 tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)
 docs/           Milestone plans
-ui/debug/       Debug overlay (needs, scores, personality, decision log)
+ui/debug/       Debug overlay (needs, scores, personality, relationships, decision log)
+ui/dog_panel.gd Player-facing dog card for the selected dog
 scenes/         main.tscn (room), main.gd (keys, CLI args), camera_rig.gd
 ```
 
