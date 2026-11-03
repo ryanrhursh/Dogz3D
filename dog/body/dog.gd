@@ -36,6 +36,8 @@ var gait: StringName = &"walk"
 var held_item: WorldItem
 ## Zone id -> TouchZone.
 var touch_zones: Dictionary = {}
+## Items this dog has claimed a slot on (bowl it's eating from, its bed).
+var _claims: Array[WorldItem] = []
 
 var _target := Vector3.ZERO
 var _arrive_radius := 0.3
@@ -154,14 +156,15 @@ func set_gait(new_gait: StringName) -> void:
 	gait = new_gait
 
 
-## Nearest available item with the affordance that nobody is carrying.
+## Nearest available item with the affordance that nobody is carrying and that has a
+## free slot for this dog (other dogs' claims count).
 func find_nearest_item(affordance: StringName) -> WorldItem:
 	var best: WorldItem = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
 		if item == null or item.held or not item.has_affordance(affordance) \
-				or not item.is_available():
+				or not item.is_available() or not item.is_free_for(self):
 			continue
 		var d := global_position.distance_squared_to(item.global_position)
 		if d < best_dist:
@@ -195,6 +198,36 @@ func find_offered_item(affordance: StringName) -> WorldItem:
 			best_dist = d
 			best = item
 	return best
+
+
+## Claims a slot on the item so other dogs look elsewhere. Release in the behavior's
+## exit(). False if another dog got there first.
+func claim_item(item: WorldItem) -> bool:
+	_prune_claims()
+	if item == null or not is_instance_valid(item) or not item.reserve(self):
+		return false
+	if not _claims.has(item):
+		_claims.append(item)
+	return true
+
+
+func release_item(item: WorldItem) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	_claims.erase(item)
+	item.release(self)
+
+
+func release_all_claims() -> void:
+	_prune_claims()
+	for item in _claims.duplicate():
+		release_item(item)
+
+
+func _prune_claims() -> void:
+	for i in range(_claims.size() - 1, -1, -1):
+		if not is_instance_valid(_claims[i]):
+			_claims.remove_at(i)
 
 
 ## True if the dog can walk close enough to put its mouth on `point`
@@ -251,6 +284,7 @@ func reroll_personality(seed_value: int) -> void:
 	if brain.current != null:
 		brain.interrupt(self)
 	drop_held()
+	release_all_claims()
 	sleeping = false
 	set_pose(&"stand")
 	set_gait(&"walk")
@@ -261,6 +295,16 @@ func reroll_personality(seed_value: int) -> void:
 	var new_personality := DogPersonality.roll(breed, roll_rng)
 	var prefs := DogTouchPrefs.roll(new_personality, roll_rng)
 	brain.setup(new_personality, seed_value, prefs)
+
+
+## Takes the dog out of the simulation before it's freed (rehomed, removed by load).
+func retire() -> void:
+	brain.interrupt(self)
+	drop_held()
+	release_all_claims()
+	remove_from_group("dogs")
+	set_process(false)
+	set_physics_process(false)
 
 
 # --- Save ------------------------------------------------------------------------
@@ -278,6 +322,7 @@ func to_dict() -> Dictionary:
 func from_dict(data: Dictionary) -> void:
 	brain.interrupt(self)
 	drop_held()
+	release_all_claims()
 	sleeping = false
 	_moving = false
 	set_gait(&"walk")

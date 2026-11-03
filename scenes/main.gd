@@ -1,6 +1,6 @@
 extends Node3D
-## Gray-box entry point: bakes the navmesh, wires debug keys, loads the save,
-## and handles command-line soak-test arguments.
+## Gray-box entry point: bakes the navmesh, spawns the pack, wires selection and
+## debug keys, loads the save, and handles command-line soak-test arguments.
 ##
 ## Soak test (headless, no window):
 ##   godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 \
@@ -11,16 +11,19 @@ extends Node3D
 ##   --timescale=N         start at N x speed
 ##   --quit-after-hours=N  quit after N game hours and print a summary
 ##   --autofeed            refill bowls when empty (an attentive owner)
-##   --autopet             pet the dog when affection drops below 40
-##   --seed=N              fixed personality and decision RNG
+##   --autopet             pet any dog whose affection drops below 40
+##   --seed=N              fixed personality and decision RNG (dog i gets N + i * 7919)
+##   --dogs=N              start with N dogs (default 1)
 ##   --log                 print every behavior change
 ##   --screenshot=PATH     save a PNG after --screenshot-delay=N real seconds (default 3), then quit
 ##   --test=SUITE|all      run headless tests (tests/test_runner.gd), then quit with 0/1
 
 const TIME_SCALES := [1.0, 4.0, 16.0, 60.0]
+const WORLD_LAYER := 1
+const DOGS_LAYER := 2
 
 @onready var home: NavigationRegion3D = $Home
-@onready var dog: Dog = $Dog
+@onready var pack: Pack = $Pack
 # Untyped on purpose: their scripts have no class_name, so calls resolve at runtime.
 @onready var overlay = $DebugOverlay
 @onready var camera_rig = $CameraRig
@@ -43,8 +46,13 @@ func _ready() -> void:
 	var args := _parse_args()
 	if args.has("no-save"):
 		SaveManager.enabled = false
+	pack.selection_changed.connect(_on_selection_changed)
+	pack.dog_added.connect(_on_dog_added)
+	var seed_value := randi()
 	if args.has("seed"):
-		dog.reroll_personality(int(args["seed"]))
+		seed_value = int(args["seed"])
+	pack.populate(int(args.get("dogs", "1")), seed_value)
+	camera_rig.set_target(pack.selected, true)
 	if not args.has("fresh") and SaveManager.has_save():
 		SaveManager.load_game()
 	if args.has("timescale"):
@@ -57,8 +65,7 @@ func _ready() -> void:
 	_autopet = args.has("autopet")
 	_start_minutes = SimClock.total_minutes
 
-	dog.brain.behavior_changed.connect(_on_behavior_changed)
-	for need: StringName in dog.brain.needs.names():
+	for need: StringName in DogNeeds.BASE_DECAY_PER_HOUR:
 		_lowest_seen[need] = DogNeeds.MAX_VALUE
 
 	if args.has("screenshot"):
@@ -91,8 +98,9 @@ func _screenshot_and_quit(path: String, delay: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	for need: StringName in dog.brain.needs.names():
-		_lowest_seen[need] = minf(float(_lowest_seen[need]), dog.brain.needs.get_value(need))
+	for dog in pack.dogs:
+		for need: StringName in _lowest_seen:
+			_lowest_seen[need] = minf(float(_lowest_seen[need]), dog.brain.needs.get_value(need))
 
 	if _autofeed:
 		for bowl: WorldItem in [food_bowl, water_bowl]:
@@ -102,9 +110,11 @@ func _process(_delta: float) -> void:
 				if _log_decisions:
 					print("[%s] owner refilled %s" % [SimClock.format_short(), bowl.display_name])
 
-	if _autopet and not dog.sleeping and dog.brain.needs.get_value(&"affection") < 40.0:
-		dog.pet()
-		_pets += 1
+	if _autopet:
+		for dog in pack.dogs:
+			if not dog.sleeping and dog.brain.needs.get_value(&"affection") < 40.0:
+				dog.pet()
+				_pets += 1
 
 	if _quit_after_minutes > 0.0 and SimClock.total_minutes - _start_minutes >= _quit_after_minutes:
 		_print_summary()
@@ -112,6 +122,15 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+			var picked := pick_dog_at(mb.position)
+			if picked != null:
+				# Clicking the already-selected dog will enter close-up mode (milestone 3).
+				pack.select(picked)
+				get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey):
 		return
 	var key := event as InputEventKey
@@ -129,7 +148,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_SPACE:
 			SimClock.paused = not SimClock.paused
 		KEY_E:
-			dog.pet()
+			if pack.selected != null:
+				pack.selected.pet()
+		KEY_TAB:
+			pack.select_next()
+		KEY_N:
+			var pup := pack.adopt()
+			pup.show_emote("new friend!", 2.0)
 		KEY_F:
 			food_bowl.refill()
 		KEY_G:
@@ -139,14 +164,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F3:
 			overlay.toggle()
 		KEY_F5:
-			if SaveManager.save_game():
-				dog.show_emote("(saved)", 1.0)
+			if SaveManager.save_game() and pack.selected != null:
+				pack.selected.show_emote("(saved)", 1.0)
 		KEY_F9:
-			if SaveManager.load_game():
-				dog.show_emote("(loaded)", 1.0)
+			if SaveManager.load_game() and pack.selected != null:
+				pack.selected.show_emote("(loaded)", 1.0)
 		KEY_F8:
-			dog.reroll_personality(randi())
-			dog.show_emote("new puppy!", 1.5)
+			if pack.selected != null:
+				pack.selected.reroll_personality(randi())
+				pack.selected.show_emote("new puppy!", 1.5)
 		_:
 			return
 	get_viewport().set_input_as_handled()
@@ -157,38 +183,91 @@ func _set_speed(index: int) -> void:
 	SimClock.time_scale = TIME_SCALES[index]
 
 
-func _on_behavior_changed(from_id: StringName, to_id: StringName, reason: String) -> void:
+## The dog under a screen position (its body or a touch zone), or null.
+## Walls and furniture block the pick.
+func pick_dog_at(screen_pos: Vector2) -> Dog:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return null
+	var from := camera.project_ray_origin(screen_pos)
+	var to := from + camera.project_ray_normal(screen_pos) * 100.0
+	var query := PhysicsRayQueryParameters3D.create(from, to,
+			WORLD_LAYER | DOGS_LAYER | TouchZone.TOUCH_LAYER)
+	query.collide_with_areas = true
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var collider: Object = hit.get("collider")
+	if collider is Dog:
+		return collider as Dog
+	if collider is TouchZone:
+		return (collider as TouchZone).dog
+	return null
+
+
+func _on_selection_changed(dog: Dog) -> void:
+	overlay.dog = dog
+	camera_rig.set_target(dog, false)
+
+
+func _on_dog_added(dog: Dog) -> void:
+	dog.brain.behavior_changed.connect(_on_behavior_changed.bind(dog))
+
+
+func _on_behavior_changed(from_id: StringName, to_id: StringName, reason: String,
+		dog: Dog) -> void:
 	if not _log_decisions:
 		return
 	var needs := dog.brain.needs
-	print("[%s] %s -> %s (%s) | hun %.0f thi %.0f ene %.0f fun %.0f aff %.0f" % [
-			SimClock.format_short(), from_id, to_id, reason,
+	var who := ""
+	if pack.dogs.size() > 1:
+		who = dog.dog_name + ": "
+	print("[%s] %s%s -> %s (%s) | hun %.0f thi %.0f ene %.0f fun %.0f aff %.0f" % [
+			SimClock.format_short(), who, from_id, to_id, reason,
 			needs.get_value(&"hunger"), needs.get_value(&"thirst"), needs.get_value(&"energy"),
 			needs.get_value(&"fun"), needs.get_value(&"affection")])
 
 
+## One dog: the milestone 1 format, so baselines compare directly. Several dogs: one
+## line per dog, then pack totals (choices summed, needs averaged, lowest over all dogs).
 func _print_summary() -> void:
-	var brain := dog.brain
+	var dogs := pack.dogs
 	print("")
-	print("=== Soak summary: %.1f game hours, ended %s ===" % [
-			(SimClock.total_minutes - _start_minutes) / 60.0, SimClock.format_time()])
-	print("Behavior choices: %s" % str(brain.choice_counts))
+	print("=== Soak summary: %.1f game hours, ended %s, %d dog(s) ===" % [
+			(SimClock.total_minutes - _start_minutes) / 60.0, SimClock.format_time(), dogs.size()])
+	var total_choices := {}
+	var need_sums := {}
+	var bond_sum := 0.0
+	var mood_sum := 0.0
+	for dog in dogs:
+		var brain := dog.brain
+		for id: StringName in brain.choice_counts:
+			total_choices[id] = int(total_choices.get(id, 0)) + int(brain.choice_counts[id])
+		for need: StringName in _lowest_seen:
+			need_sums[need] = float(need_sums.get(need, 0.0)) + brain.needs.get_value(need)
+		bond_sum += brain.memory.bond
+		mood_sum += brain.mood()
+		if dogs.size() > 1:
+			print("  %-10s %s | bond %.1f mood %+.2f" % [dog.dog_name, str(brain.choice_counts),
+					brain.memory.bond, brain.mood()])
+	var n := maxf(1.0, float(dogs.size()))
+	print("Behavior choices: %s" % str(total_choices))
 	var final_line := PackedStringArray()
 	var low_line := PackedStringArray()
-	for need: StringName in brain.needs.names():
-		final_line.append("%s %.0f" % [need, brain.needs.get_value(need)])
+	for need: StringName in _lowest_seen:
+		final_line.append("%s %.0f" % [need, float(need_sums.get(need, 0.0)) / n])
 		low_line.append("%s %.0f" % [need, float(_lowest_seen[need])])
 	print("Final needs:  %s" % ", ".join(final_line))
 	print("Lowest seen:  %s" % ", ".join(low_line))
 	print("Bowl refills: %d   Pets: %d   Bond: %.1f   Mood: %+.2f" % [
-			_refills, _pets, brain.memory.bond, brain.mood()])
+			_refills, _pets, bond_sum / n, mood_sum / n])
 
 
 ## At high soak speeds, walking must keep pace with game time or every trip
 ## eats hours. Uncap movement and add physics substeps so the dog doesn't overshoot.
 func _uncap_movement_for_soak() -> void:
 	var scale := maxf(1.0, SimClock.time_scale)
-	dog.max_movement_time_scale = scale
+	pack.movement_time_scale_cap = scale
+	for dog in pack.dogs:
+		dog.max_movement_time_scale = scale
 	var substeps := int(ceil(scale / 6.0))
 	Engine.physics_ticks_per_second = 60 * substeps
 	Engine.max_physics_steps_per_frame = substeps + 2

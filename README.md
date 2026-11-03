@@ -15,11 +15,13 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | C | Re-follow the dog after panning |
 | 1 2 3 4 | Time scale 1x, 4x, 16x, 60x |
 | Space | Pause |
+| LMB on a dog / Tab | Select a dog (camera follows it, overlay shows it) |
+| N | Adopt another dog (debug) |
 | E | Pet the selected dog (debug fallback for the milestone 3 hand tool) |
 | F / G | Refill food / water bowl |
 | F3 | Toggle the debug overlay |
 | F5 / F9 | Save / load |
-| F8 | New puppy (re-rolls personality, resets needs) |
+| F8 | Re-roll the selected dog (new personality, needs reset) |
 
 Time: 1 real second = 1 game minute at 1x, so a game day is 24 real minutes.
 Change `SimClock.minutes_per_real_second` to tune it.
@@ -31,6 +33,7 @@ sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
+dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
 items/          WorldItem + bowl and bed scenes; the AI reads affordance tags only
 interaction/    Milestone 3: hand tool and touch zones (TouchZone so far)

@@ -1,12 +1,13 @@
 extends CanvasLayer
-## Live view into the dog's brain: clock, needs, behavior scores, personality and
-## the decision log. F3 toggles. Tuning utility AI without this is guesswork.
+## Live view into the selected dog's brain: clock, needs, behavior scores, personality
+## and the decision log. F3 toggles. Tuning utility AI without this is guesswork.
 
 const REFRESH_SECONDS := 0.1
 const NEED_ORDER := [&"hunger", &"thirst", &"energy", &"fun", &"affection"]
 const HELP_TEXT := "RMB drag orbit · wheel zoom · WASD pan · C follow dog    " \
-		+ "1-4 speed · Space pause    E pet · F refill food · G refill water    " \
-		+ "F3 overlay · F5 save · F9 load · F8 new puppy"
+		+ "LMB/Tab select dog · N adopt    1-4 speed · Space pause    " \
+		+ "E pet · F refill food · G refill water    " \
+		+ "F3 overlay · F5 save · F9 load · F8 re-roll dog"
 
 @export var dog: Dog
 
@@ -47,15 +48,19 @@ func _refresh_view() -> void:
 	if SimClock.paused:
 		status = "   PAUSED"
 	_clock.text = "%s    x%s%s" % [SimClock.format_time(), str(SimClock.time_scale), status]
-	if dog == null:
+	if dog == null or not is_instance_valid(dog):
 		return
 	var brain := dog.brain
 
 	var breed_name := "?"
 	if dog.breed != null:
 		breed_name = dog.breed.breed_name
-	_header.text = "%s (%s)   bond %.0f   mood %+.2f" % [dog.dog_name, breed_name,
-			brain.memory.bond, brain.mood()]
+	var pack := get_tree().get_first_node_in_group("pack") as Pack
+	var pack_text := ""
+	if pack != null and pack.dogs.size() > 1:
+		pack_text = "   [%d/%d]" % [pack.dogs.find(dog) + 1, pack.dogs.size()]
+	_header.text = "%s (%s)   bond %.0f   mood %+.2f%s" % [dog.dog_name, breed_name,
+			brain.memory.bond, brain.mood(), pack_text]
 
 	var doing := "-"
 	if brain.current != null:
@@ -96,7 +101,10 @@ func _refresh_view() -> void:
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
 		if item != null and item.consumable:
-			item_lines.append("%s %.0f%%" % [item.display_name, item.fill * 100.0])
+			var busy := ""
+			if item.user_count() > 0:
+				busy = " (in use)"
+			item_lines.append("%s %.0f%%%s" % [item.display_name, item.fill * 100.0, busy])
 	_items.text = "   ".join(item_lines)
 
 	var p := brain.personality

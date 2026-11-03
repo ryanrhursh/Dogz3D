@@ -31,6 +31,8 @@ func score(dog: Dog) -> float:
 func enter(dog: Dog) -> void:
 	_asleep = false
 	_bed = dog.find_nearest_item(&"bed")
+	if _bed != null and not dog.claim_item(_bed):
+		_bed = null
 	if _bed != null:
 		dog.go_to_item(_bed)
 	else:
@@ -56,6 +58,8 @@ func tick(dog: Dog, game_minutes: float) -> int:
 
 func exit(dog: Dog) -> void:
 	_asleep = false
+	if is_instance_valid(_bed):
+		dog.release_item(_bed)
 	_bed = null
 	dog.sleeping = false
 	dog.set_pose(&"stand")

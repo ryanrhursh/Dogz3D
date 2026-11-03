@@ -28,11 +28,15 @@ signal fill_changed(item: WorldItem)
 @export var free_when_empty := false
 ## Optional physics body this item rides on (ball). Frozen while held.
 @export var physics_body: RigidBody3D
+## How many dogs may use it at once (bowl 1, trough 3, big bed 2). 0 = unlimited.
+@export var max_users := 1
 
 ## True while a hand or mouth carries this item.
 var held := false
 ## The Node3D it follows while held (hand anchor, dog mouth). Null otherwise.
 var holder: Node3D
+
+var _users: Array[Node] = []
 
 
 func _ready() -> void:
@@ -66,6 +70,38 @@ func consume(amount: float) -> float:
 	if free_when_empty and fill <= 0.001:
 		remove()
 	return taken
+
+
+## True if `user` already has a claim or there's a free slot.
+func is_free_for(user: Node) -> bool:
+	_prune_users()
+	if max_users <= 0 or _users.has(user):
+		return true
+	return _users.size() < max_users
+
+
+## Claims a slot for `user` (dogs claim via Dog.claim_item). False if it's full.
+func reserve(user: Node) -> bool:
+	if not is_free_for(user):
+		return false
+	if not _users.has(user):
+		_users.append(user)
+	return true
+
+
+func release(user: Node) -> void:
+	_users.erase(user)
+
+
+func user_count() -> int:
+	_prune_users()
+	return _users.size()
+
+
+func _prune_users() -> void:
+	for i in range(_users.size() - 1, -1, -1):
+		if not is_instance_valid(_users[i]):
+			_users.remove_at(i)
 
 
 ## The node that moves in the world: the physics body if there is one, else self.

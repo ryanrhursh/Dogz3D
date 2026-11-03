@@ -32,11 +32,11 @@ func _on_hour_changed(hour: int) -> void:
 		save_game()
 
 
-func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+func has_save(path: String = SAVE_PATH) -> bool:
+	return FileAccess.file_exists(path)
 
 
-func save_game() -> bool:
+func save_game(path: String = SAVE_PATH) -> bool:
 	var scene := get_tree().current_scene
 	if scene == null:
 		return false
@@ -61,26 +61,27 @@ func save_game() -> bool:
 		"items": items,
 	}
 
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("Save failed: %s" % error_string(FileAccess.get_open_error()))
 		return false
-	file.store_string(JSON.stringify(data, "\t"))
+	# Full precision so floats (traits, prefs, needs) round-trip exactly.
+	file.store_string(JSON.stringify(data, "\t", true, true))
 	file.close()
-	saved.emit(SAVE_PATH)
+	saved.emit(path)
 	return true
 
 
-func load_game() -> bool:
-	if not has_save():
+func load_game(path: String = SAVE_PATH) -> bool:
+	if not has_save(path):
 		return false
 	var scene := get_tree().current_scene
 	if scene == null:
 		return false
 
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not (parsed is Dictionary):
-		push_error("Save file is not valid JSON: %s" % SAVE_PATH)
+		push_error("Save file is not valid JSON: %s" % path)
 		return false
 	var data: Dictionary = parsed
 
@@ -94,12 +95,21 @@ func load_game() -> bool:
 	var clock: Dictionary = data.get("clock", {})
 	SimClock.from_dict(clock)
 
+	var saved_dogs: Array = data.get("dogs", [])
+	# The pack spawns saved dogs that don't exist yet and removes ones that aren't saved.
+	var pack := get_tree().get_first_node_in_group("pack") as Pack
+	if pack != null:
+		var ids := PackedStringArray()
+		for entry in saved_dogs:
+			var entry_data: Dictionary = entry
+			ids.append(str(entry_data.get("id", "")))
+		pack.sync_to_ids(ids)
+
 	var dogs_by_id: Dictionary = {}
 	for node in get_tree().get_nodes_in_group("dogs"):
 		var dog := node as Dog
 		if dog != null:
 			dogs_by_id[dog.dog_id] = dog
-	var saved_dogs: Array = data.get("dogs", [])
 	for entry in saved_dogs:
 		var dog_data: Dictionary = entry
 		var dog: Dog = dogs_by_id.get(str(dog_data.get("id", "")))
@@ -107,10 +117,10 @@ func load_game() -> bool:
 			dog.from_dict(dog_data)
 
 	var saved_items: Dictionary = data.get("items", {})
-	for path in saved_items:
-		var item := scene.get_node_or_null(NodePath(str(path))) as WorldItem
+	for item_path in saved_items:
+		var item := scene.get_node_or_null(NodePath(str(item_path))) as WorldItem
 		if item != null:
-			var item_data: Dictionary = saved_items[path]
+			var item_data: Dictionary = saved_items[item_path]
 			item.from_dict(item_data)
 
 	# Offline catch-up: real time away becomes (capped) game time.
@@ -124,5 +134,5 @@ func load_game() -> bool:
 			dog.brain.simulate_offline(offline_minutes)
 		print("SaveManager: caught up %.0f game minutes while you were away." % offline_minutes)
 
-	loaded.emit(SAVE_PATH)
+	loaded.emit(path)
 	return true

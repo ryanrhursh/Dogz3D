@@ -48,6 +48,15 @@ func toggle_follow() -> void:
 	follow = not follow
 
 
+## Follows a new target (the selected dog). snap jumps there instead of gliding.
+func set_target(target: Node3D, snap: bool) -> void:
+	follow_target = target
+	follow = target != null
+	if snap and target != null:
+		_focus = target.global_position
+		_apply()
+
+
 func _process(delta: float) -> void:
 	var pan := Vector3.ZERO
 	if Input.is_physical_key_pressed(KEY_W):
