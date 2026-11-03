@@ -15,13 +15,16 @@ Dogz-style living pets.
 ## Pillars
 
 1. **Every dog is someone.** Each dog has its own brain, personality, likes, memories, skill
-   tree and personal quests. You learn them by name.
+   tree and personal quests, and shows how it feels through tail, ears and posture before
+   any UI does. You learn them by name.
 2. **Build to care.** Buildings exist to meet dogs' needs. The economy is care made visible:
    happy, skilled dogs earn the town its income.
 3. **Hands-on joy, never chores.** Close-up interactions are tactile, quick and rewarding,
    and every one grants bond and XP. Repetitive upkeep (filling bowls, cleaning) moves to
    buildings and staff as the town grows. The player's hand is for the fun parts.
-4. **Cozy pressure.** Resources matter and choices have trade-offs, but failure is gentle.
+4. **Learned, not scripted.** Tricks and habits come from reinforcement, so training feels
+   earned.
+5. **Cozy pressure.** Resources matter and choices have trade-offs, but failure is gentle.
    Dogs never die. Neglect makes dogs unhappy and less productive, and in the worst case a
    dog wanders off to a neighbour, and a quest brings it home.
 
