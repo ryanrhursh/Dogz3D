@@ -9,7 +9,8 @@ conventions, verification), then the current milestone's plan doc in `docs/`.
 Every session ends with a final report containing all five parts, even if the work was cut
 short, blocked or only partly done:
 
-1. **What I need to do**: actions for the owner (branch to delete, things to check by hand).
+1. **What I need to do**: actions for the owner. Always start with the merge link (see Git)
+   and say what it merges; then things to check by hand.
 2. **What you did**: a short summary.
 3. **Outstanding issues.**
 4. **The exact, fully detailed prompt for the next session**, in a fenced code block, ready
@@ -27,14 +28,21 @@ Don't skip parts 4 and 5 because the next step "is obvious" or the session is sh
 
 ## Git
 
+The owner merges into main. Sessions never commit or push to main.
+
 - Before any commit: `git fetch origin main && git checkout -B <session branch> origin/main`,
   `git config user.name "ryanrhursh"`,
   `git config user.email "110621309+ryanrhursh@users.noreply.github.com"`.
-- Push only to main, fast-forward only: `git push origin HEAD:main`. Never force-push. Don't
-  push the session branch and don't open pull requests or post on GitHub.
-- When done, `git checkout -B main origin/main` and delete the local session branch, so no
-  "unpushed commits" check fires on it. Remind the owner to delete the session branch on
-  GitHub if it exists there.
+- Commit on the session branch only, one commit per finished, verified step.
+- Push the session branch: `git push -u origin <session branch>`. If GitHub rejects it
+  because the branch there holds an older session's already-merged commits, push with
+  `--force-with-lease`. Never force-push anything else, and never push to main.
+- Don't open pull requests or post on GitHub yourself.
+- When done, give the owner the merge link:
+  `https://github.com/ryanrhursh/Dogz3D/compare/main...<session branch>`
+  The owner opens the pull request there, merges it into main and deletes the branch.
+- If the work is cut short, push what is verified and committed anyway, and say in the
+  handoff what the link does and doesn't contain.
 
 ## No AI traces
 
