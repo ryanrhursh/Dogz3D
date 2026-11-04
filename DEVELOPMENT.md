@@ -14,15 +14,16 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: the M3 windowed check on Windows, then write `docs/m4_estate.md` (M4 plan).
+- NEXT: the M3 windowed check on Windows; the owner decisions in `docs/m4_estate.md`
+  ("Decisions for the owner", Q1-Q9), then M4 from step 1.
 - M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
   treat jar and come_for_food; the ball, item bounds, throwing and chase_toy; the
   `--autohands` simulated owner), plus the wrap-up (dogs skip food they can't reach; a
   ball out of reach comes back after 30 game minutes). Left: a windowed check on
   Windows. See `docs/m3_hands.md`.
-- M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
-  roadmap.
+- M4 Estate and economy: planned in `docs/m4_estate.md` (7 steps plus a windowed check).
+- M5–M10 (growth/skill trees, quests, staff, art, content, scale-up): see the roadmap.
 
 ## Workflow
 
