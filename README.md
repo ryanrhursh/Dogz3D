@@ -1,10 +1,11 @@
 # Dogz 3D (working title)
 
-A cozy dog sanctuary town builder (see `docs/design.md`, roadmap in `docs/roadmap.md`).
+A cozy life sim and town builder in a world of animals (see `docs/design.md`, roadmap in
+`docs/roadmap.md`).
 Current build: the gray box, a pack of capsule-shaped corgis with needs, personalities,
-relationships and utility-AI brains, living in a one-room diorama with a day/night cycle.
+relationships and utility-AI brains, living in a house with a small fenced yard and a day/night cycle.
 Click a dog twice for close-up mode, where your hand pets, hand-feeds and throws a ball.
-The town economy is next.
+The town economy (plot, building, supplies, farming and jobs) is next.
 
 Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the editor and press F5.
 
@@ -36,7 +37,7 @@ Change `SimClock.minutes_per_real_second` to tune it.
 ## Layout
 
 ```
-sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
+sim/            SimClock, SaveManager and Ledger (autoloads), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
                 wait_turn, enjoy_pets, duck_away, come_for_food, chase_toy
@@ -76,8 +77,8 @@ Runs days of game time in seconds and prints a summary:
 godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log
 ```
 
-Reference result (seed 42, 48 h, attentive owner): idle 85, wander 22, chase_toy 11, drink 10,
-eat 10, sleep 7; no need fell below 47 except affection (33). With no owner, hunger and thirst
+Reference result (seed 42, 48 h, attentive owner): idle 69, wander 18, chase_toy 10, drink 10,
+eat 10, sleep 7; no need fell below 49 except affection (34). With no owner, hunger and thirst
 hit 0 by day 2.
 
 Swap `--autopet` for `--autohands` to have a simulated owner use the hand instead: it

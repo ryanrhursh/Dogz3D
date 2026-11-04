@@ -1,4 +1,4 @@
-[gd_scene load_steps=45 format=3]
+[gd_scene load_steps=70 format=3]
 
 [ext_resource type="Script" path="res://scenes/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://sim/day_night.gd" id="2_sun"]
@@ -75,13 +75,6 @@ size = Vector3(0.2, 1.4, 8.0)
 albedo_color = Color(0.8, 0.77, 0.7, 1)
 roughness = 0.85
 
-[sub_resource type="BoxMesh" id="BoxMesh_15"]
-material = SubResource("StandardMaterial3D_14")
-size = Vector3(10.4, 0.35, 0.2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_16"]
-size = Vector3(10.4, 0.35, 0.2)
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_17"]
 albedo_color = Color(0.8, 0.77, 0.7, 1)
 roughness = 0.85
@@ -134,11 +127,107 @@ roughness = 1.0
 material = SubResource("StandardMaterial3D_29")
 size = Vector2(3, 2)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_31"]
-size = Vector3(10.8, 2.5, 0.4)
+[sub_resource type="StandardMaterial3D" id="Mat_grass"]
+albedo_color = Color(0.42, 0.58, 0.32, 1)
+roughness = 0.9
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_32"]
-size = Vector3(0.4, 2.5, 8.0)
+[sub_resource type="StandardMaterial3D" id="Mat_fence"]
+albedo_color = Color(0.55, 0.42, 0.3, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_gate"]
+albedo_color = Color(0.38, 0.27, 0.18, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_meadow"]
+albedo_color = Color(0.33, 0.47, 0.27, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_WallSouthWest"]
+material = SubResource("StandardMaterial3D_14")
+size = Vector3(2.85, 0.35, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape_WallSouthWest"]
+size = Vector3(2.85, 0.35, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_WallSouthEast"]
+material = SubResource("StandardMaterial3D_14")
+size = Vector3(6.05, 0.35, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape_WallSouthEast"]
+size = Vector3(6.05, 0.35, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_YardSouth"]
+material = SubResource("Mat_grass")
+size = Vector3(16.0, 0.2, 5.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape_YardSouth"]
+size = Vector3(16.0, 0.2, 5.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_YardEast"]
+material = SubResource("Mat_grass")
+size = Vector3(5.8, 0.2, 8.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape_YardEast"]
+size = Vector3(5.8, 0.2, 8.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_FenceSouthWest"]
+material = SubResource("Mat_fence")
+size = Vector3(6.45, 0.6, 0.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape_FenceSouthWest"]
+size = Vector3(6.45, 0.6, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_Gate"]
+material = SubResource("Mat_gate")
+size = Vector3(1.5, 0.7, 0.12)
+
+[sub_resource type="BoxShape3D" id="BoxShape_Gate"]
+size = Vector3(1.5, 0.7, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_FenceSouthEast"]
+material = SubResource("Mat_fence")
+size = Vector3(8.05, 0.6, 0.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape_FenceSouthEast"]
+size = Vector3(8.05, 0.6, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_FenceEast"]
+material = SubResource("Mat_fence")
+size = Vector3(0.1, 0.6, 14.0)
+
+[sub_resource type="BoxShape3D" id="BoxShape_FenceEast"]
+size = Vector3(0.1, 0.6, 14.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_FenceNorth"]
+material = SubResource("Mat_fence")
+size = Vector3(5.6, 0.6, 0.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape_FenceNorth"]
+size = Vector3(5.6, 0.6, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_FenceWest"]
+material = SubResource("Mat_fence")
+size = Vector3(0.1, 0.6, 5.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape_FenceWest"]
+size = Vector3(0.1, 0.6, 5.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape_South"]
+size = Vector3(16.4, 2.5, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape_East"]
+size = Vector3(0.2, 2.5, 14.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape_North"]
+size = Vector3(5.8, 2.5, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape_West"]
+size = Vector3(0.2, 2.5, 5.8)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_meadow"]
+material = SubResource("Mat_meadow")
+size = Vector2(60, 60)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -190,14 +279,23 @@ mesh = SubResource("BoxMesh_12")
 [node name="Collision" type="CollisionShape3D" parent="Home/WallWest"]
 shape = SubResource("BoxShape3D_13")
 
-[node name="WallSouth" type="StaticBody3D" parent="Home"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.175, 4.1)
+[node name="WallSouthWest" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.775, 0.175, 4.1)
 
-[node name="Mesh" type="MeshInstance3D" parent="Home/WallSouth"]
-mesh = SubResource("BoxMesh_15")
+[node name="Mesh" type="MeshInstance3D" parent="Home/WallSouthWest"]
+mesh = SubResource("BoxMesh_WallSouthWest")
 
-[node name="Collision" type="CollisionShape3D" parent="Home/WallSouth"]
-shape = SubResource("BoxShape3D_16")
+[node name="Collision" type="CollisionShape3D" parent="Home/WallSouthWest"]
+shape = SubResource("BoxShape_WallSouthWest")
+
+[node name="WallSouthEast" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.175, 0.175, 4.1)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/WallSouthEast"]
+mesh = SubResource("BoxMesh_WallSouthEast")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/WallSouthEast"]
+shape = SubResource("BoxShape_WallSouthEast")
 
 [node name="WallEast" type="StaticBody3D" parent="Home"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.1, 0.175, 0)
@@ -235,23 +333,115 @@ mesh = SubResource("BoxMesh_27")
 [node name="Collision" type="CollisionShape3D" parent="Home/Bookshelf"]
 shape = SubResource("BoxShape3D_28")
 
+[node name="YardSouth" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, -0.1, 6.9)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/YardSouth"]
+mesh = SubResource("BoxMesh_YardSouth")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/YardSouth"]
+shape = SubResource("BoxShape_YardSouth")
+
+[node name="YardEast" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.9, -0.1, -0.1)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/YardEast"]
+mesh = SubResource("BoxMesh_YardEast")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/YardEast"]
+shape = SubResource("BoxShape_YardEast")
+
+[node name="FenceSouthWest" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.975, 0.3, 9.75)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/FenceSouthWest"]
+mesh = SubResource("BoxMesh_FenceSouthWest")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/FenceSouthWest"]
+shape = SubResource("BoxShape_FenceSouthWest")
+
+[node name="Gate" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0.35, 9.75)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/Gate"]
+mesh = SubResource("BoxMesh_Gate")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/Gate"]
+shape = SubResource("BoxShape_Gate")
+
+[node name="FenceSouthEast" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.775, 0.3, 9.75)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/FenceSouthEast"]
+mesh = SubResource("BoxMesh_FenceSouthEast")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/FenceSouthEast"]
+shape = SubResource("BoxShape_FenceSouthEast")
+
+[node name="FenceEast" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.75, 0.3, 2.8)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/FenceEast"]
+mesh = SubResource("BoxMesh_FenceEast")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/FenceEast"]
+shape = SubResource("BoxShape_FenceEast")
+
+[node name="FenceNorth" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 0.3, -4.15)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/FenceNorth"]
+mesh = SubResource("BoxMesh_FenceNorth")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/FenceNorth"]
+shape = SubResource("BoxShape_FenceNorth")
+
+[node name="FenceWest" type="StaticBody3D" parent="Home"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.15, 0.3, 7.0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Home/FenceWest"]
+mesh = SubResource("BoxMesh_FenceWest")
+
+[node name="Collision" type="CollisionShape3D" parent="Home/FenceWest"]
+shape = SubResource("BoxShape_FenceWest")
+
 [node name="ItemBounds" type="Node3D" parent="."]
 
 [node name="South" type="StaticBody3D" parent="ItemBounds"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 4.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 1.25, 9.95)
 collision_layer = 16
 collision_mask = 0
 
 [node name="Collision" type="CollisionShape3D" parent="ItemBounds/South"]
-shape = SubResource("BoxShape3D_31")
+shape = SubResource("BoxShape_South")
 
 [node name="East" type="StaticBody3D" parent="ItemBounds"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2, 1.25, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.95, 1.25, 2.8)
 collision_layer = 16
 collision_mask = 0
 
 [node name="Collision" type="CollisionShape3D" parent="ItemBounds/East"]
-shape = SubResource("BoxShape3D_32")
+shape = SubResource("BoxShape_East")
+
+[node name="North" type="StaticBody3D" parent="ItemBounds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 1.25, -4.35)
+collision_layer = 16
+collision_mask = 0
+
+[node name="Collision" type="CollisionShape3D" parent="ItemBounds/North"]
+shape = SubResource("BoxShape_North")
+
+[node name="West" type="StaticBody3D" parent="ItemBounds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.35, 1.25, 7.0)
+collision_layer = 16
+collision_mask = 0
+
+[node name="Collision" type="CollisionShape3D" parent="ItemBounds/West"]
+shape = SubResource("BoxShape_West")
+
+[node name="Meadow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, -0.03, 2.8)
+mesh = SubResource("PlaneMesh_meadow")
 
 [node name="Rug" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, 0.005, 1.4)

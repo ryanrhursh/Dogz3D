@@ -1,5 +1,5 @@
 extends Node
-## JSON save of the clock, every dog and every item. Autoloaded as SaveManager.
+## JSON save of the clock, every dog, every item and the ledger. Autoloaded as SaveManager.
 ##
 ## Autosaves every few game hours and on window close. On load, real time that
 ## passed since the save is converted to game time (capped) and applied to the
@@ -11,7 +11,8 @@ signal loaded(path: String)
 const SAVE_PATH := "user://save.json"
 ## v1: milestone 1. v2: touch prefs per dog, positions of movable items.
 ## v3: dog-to-dog relationships in each dog's memory.
-const SAVE_VERSION := 3
+## v4: the estate's resources ledger (later M4 steps add optional sections to v4).
+const SAVE_VERSION := 4
 const MAX_OFFLINE_MINUTES := 8.0 * 60.0
 const AUTOSAVE_EVERY_HOURS := 3
 
@@ -61,6 +62,7 @@ func save_game(path: String = SAVE_PATH) -> bool:
 		"clock": SimClock.to_dict(),
 		"dogs": dogs,
 		"items": items,
+		"ledger": Ledger.to_dict(),
 	}
 
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -91,6 +93,12 @@ static func migrate(data: Dictionary) -> Dictionary:
 			brain["memory"] = memory
 			dog_data["brain"] = brain
 		version = 3
+	if version < 4:
+		# v4: the ledger. An old estate starts with empty accounts; starting balances
+		# belong to a new game, not to an upgrade.
+		if not out.has("ledger"):
+			out["ledger"] = {"accounts": {}, "today": {}, "yesterday": {}}
+		version = 4
 	out["version"] = version
 	return out
 
@@ -145,6 +153,9 @@ func load_game(path: String = SAVE_PATH) -> bool:
 		if item != null:
 			var item_data: Dictionary = saved_items[item_path]
 			item.from_dict(item_data)
+
+	var saved_ledger: Dictionary = data.get("ledger", {})
+	Ledger.from_dict(saved_ledger)
 
 	# Offline catch-up: real time away becomes (capped) game time.
 	var saved_at: float = float(data.get("saved_at_unix", Time.get_unix_time_from_system()))

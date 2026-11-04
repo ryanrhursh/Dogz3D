@@ -48,11 +48,14 @@ func get_ball() -> Ball:
 
 
 ## Puts the ball on the table where no dog can reach it, so chase_toy scores 0 and
-## suites that aren't about the ball run as before it existed.
+## suites that aren't about the ball run as before it existed. Turns off the ball's
+## return from out of reach, so it stays parked.
 func park_ball() -> void:
 	var ball := get_ball()
 	if ball == null:
 		return
+	ball.unreachable_return_minutes = INF
+	ball.unreachable_minutes = 0.0
 	if ball.held:
 		for d in pack.dogs:
 			if d.held_item == ball:

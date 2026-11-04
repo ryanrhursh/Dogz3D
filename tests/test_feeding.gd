@@ -258,6 +258,29 @@ func test_dropped_food_gets_eaten() -> void:
 	check(not dog.brain.cooldowns.has(&"eat"), "eating a piece up counts as done, not failed")
 
 
+func test_food_on_table_skipped() -> void:
+	_prep(30.0)
+	dog.global_position = Vector3(1.4, 0.05, 1.3)
+	hand.pick_from(bowl)
+	var kibble := hand.held_item
+	hand.release_at(Vector3(1.3, 1.1, 0.45))
+	await frames(1)
+	check(is_instance_valid(kibble) and kibble.global_position.y > 0.6,
+			"the kibble landed on the table top (y %.2f)" % kibble.global_position.y)
+	check(dog.find_nearest_item(&"food") == kibble, "it is the nearest food")
+	check(dog.find_nearest_item(&"food", false, true) == bowl,
+			"the nearest reachable food is the bowl")
+	var eat := _behavior(dog, &"eat")
+	check(eat.score(dog) > 0.0, "eat scores for the bowl")
+	var saved_fill := bowl.fill
+	bowl.fill = 0.0
+	check(eat.score(dog) == 0.0, "with the bowl empty, food on the table scores 0")
+	bowl.fill = saved_fill
+	_force(dog, &"eat")
+	check(dog.brain.current != null and dog.brain.current.get("_item") == bowl,
+			"eat heads for the bowl, not the table")
+
+
 func test_pack_spreads_round_the_hand() -> void:
 	_prep(20.0)
 	var dogs: Array[Dog] = [dog, pack.adopt(), pack.adopt()]

@@ -1,9 +1,11 @@
 # Dogz 3D (working title)
 
-Cozy 3D **dog sanctuary town builder** in Godot 4.6 (GDScript), PC first. You grow an estate
-of 10–30 autonomous dogs (each with its own personality, needs, skills and quests), manage
-resources and buildings, and click any dog to interact with it close-up.
-Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan doc in
+Cozy 3D **life sim and town builder in a world of animals** in Godot 4.6 (GDScript), PC
+first. You grow a town of 10–30 autonomous animals (dogs first; each with its own
+personality, needs, friends, job, skills and quests), manage resources and buildings, and
+click any animal to interact with it close-up.
+Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. The owner's to-do list, decisions and
+progress at a glance: `TODO.md`. Each milestone has a plan doc in
 `docs/` with a step checklist and the decisions taken so far.
 
 ## Status
@@ -14,14 +16,19 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: the M3 windowed check on Windows, then write `docs/m4_estate.md` (M4 plan).
+- NEXT: M4 step 3 (buildings core). The owner's open items (the M3 windowed check, proposed
+  numbers to confirm) are in `TODO.md`.
 - M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
   treat jar and come_for_food; the ball, item bounds, throwing and chase_toy; the
-  `--autohands` simulated owner). Left: a windowed check on Windows. See
-  `docs/m3_hands.md`.
-- M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
-  roadmap.
+  `--autohands` simulated owner), plus the wrap-up (dogs skip food they can't reach; a
+  ball out of reach comes back after 30 game minutes). Left: a windowed check on
+  Windows. See `docs/m3_hands.md`.
+- M4 Estate, economy and jobs v0: steps 1-2 of 9 done (the `Ledger` autoload and save
+  v4; the outdoor plot: yard, doorway, fence and gate).
+  Owner decisions recorded. See `docs/m4_estate.md`.
+- M5–M10 (growth and skill trees, quests and neighbours, upkeep jobs, art, content,
+  scale-up): see the roadmap.
 
 ## Workflow
 
@@ -60,7 +67,10 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   a re-evaluation next tick (no min_duration, no eval budget).
 - Content is data (BreedData, and later SkillTree, BuildingData, QuestData Resources), so
   new breeds, species, skills and buildings don't need code changes where possible.
-- Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes.
+- Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes (at most
+  once per milestone: later steps add optional sections that default when missing).
+- The estate's resources live in the `Ledger` autoload (`sim/ledger.gd`); every change
+  goes through `add`/`spend`/`pay` with a reason. Brains never read it.
 
 ## GDScript conventions (pitfalls hit before)
 
@@ -69,7 +79,72 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 - Avoid names that collide with Godot built-ins (e.g. `is_connected`, `trait`, `snapped`).
 - Calling a custom method on a node typed as a built-in class (Node3D, CanvasLayer) is a
   compile error. Cast to the class_name or leave the variable untyped.
+- A local variable with the same name as a function parameter is a parse error.
+- Avoid integer-division warnings: `floori(float(a) / b)`.
+- Passing a freed object to a typed parameter is a runtime error. Type weakrefs:
+  `var r: WeakRef = weakref(x)`.
+- Prefer `not (x is T)` over `is not`.
+- StringName keys don't sort alphabetically; convert to String before sorting for display.
+- Behavior scripts have no class_name: preload them (in tests too) to read their constants.
 - Tabs for indentation.
+
+## Pitfalls (hit before)
+
+Simulation and AI:
+- At timescale 60 one process frame is one game minute. Stimuli are re-stamped when the
+  brain first reacts (`_stamp_new_stimuli`); a behavior that uses a stimulus once must
+  remember the stimulus time it used (chase_toy's `_throw_used_at`) or it re-triggers
+  inside the window.
+- Scoring runs every evaluation for every dog (30-dog packs): keep `score()` cheap, with
+  early-outs before any item or dog scan. `find_nearest_item(aff, ignore_claims,
+  reachable_only)` does a navmesh query only for movable items.
+- Forced re-evaluations bypass min_duration and the eval budget; only scores >= 0.9
+  interrupt eat, drink, sleep, wait_turn and duck_away.
+- Any physics or navmesh change (even one Area3D) shifts pack30 and the 12-dog counts
+  chaotically. The exact baselines can still hold; check them, don't assume.
+- A baseline that moved unexpectedly: diff the `[D.. hh:mm]` decision lines of the old
+  and new one-dog soak logs (`/tmp/dogz3d-verify/soak.log`; run the old code with
+  `git show HEAD:<file> > <file>` and restore after) to find the first divergence, and
+  add a temporary print there.
+
+Physics and items:
+- The ball is a RigidBody3D (layer 4 value 8, mask 1|2|16) that never sleeps (Godot's
+  sleep timer ran on while it was frozen, so a slow drop hung in the air).
+  `WorldItem.detach` wakes bodies. A held item lags its holder by one physics tick.
+- Item bounds are on layer 5 (16) under `ItemBounds` in main.tscn, outside the navmesh
+  (bake mask 1); dogs (mask 1) ignore them.
+- The ball respawns at `respawn_point` below y -2, and after `unreachable_return_minutes`
+  (30) at rest where `Dog.can_reach` would fail. `ball.advance_minutes(m)` drives that in
+  tests.
+- Ledger: `add`/`spend` refuse negative amounts with push_error (which fails verify).
+  New-game starting balances go in through `Ledger.reset(start)`, never through
+  `SaveManager.migrate`.
+
+Tests:
+- `TestSuite.before_each` resets the pack to one seed-42 dog and parks the ball on the
+  table (`park_ball()`, which also turns the ball's return off); keep that in new suites.
+  A suite that uses global autoload state (Ledger) resets it before and after each test.
+- `frames(n)` waits physics frames (about 10 per process frame in the test setup; 600 is
+  1 s of physics). Wait `tree.process_frame` for process ticks. SimClock reflects a new
+  `time_scale` only after two process frames. Use TEST_SPEED 4 for game-minute windows.
+  Physics runs even while SimClock is paused; `SimClock.advance(m)` moves a paused clock.
+- Reset dog positions to open floor (0, 0.05, 1). To walk a dog somewhere without its
+  brain picking another behavior, `dog.set_process(false)` (the brain ticks in
+  `Dog._process`; physics still moves it), then `go_to`, and turn it back on after. Lambdas must capture WeakRefs, not
+  objects that may be freed.
+- "no summary" from the tests means a parse error the import step missed. Code no test
+  reaches (UI, overlay) needs a screenshot run to catch runtime errors.
+
+UI and screenshots:
+- The F3 overlay (top-left) already fills a 1600 x 900 window down to the help line: add
+  no sections to it. The dog card is bottom-right; close-up UI goes top-center (the
+  two-line hint) or by the cursor. Top-right is planned for the resources bar,
+  bottom-center for the build palette.
+- Screenshots need a real renderer: `xvfb-run -a tools/godot.sh --rendering-driver opengl3
+  --path . -- --fresh --no-save --seed=42 --dogs=6 --closeup --screenshot=<path>
+  --screenshot-delay=5`. For a scripted moment add a temporary helper to main.gd (copy
+  main.gd aside first, restore it before committing). These runs print an ERR_CANT_OPEN
+  line (not investigated; not in verify runs). PIL is available for cropping.
 
 ## Verify every change
 
@@ -86,9 +161,9 @@ and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows
    Prints PASS/FAIL lines and exits 1 on failure. Suites live in `tests/`.
 3. Soak test, which runs 48 game hours in seconds and prints a summary:
    `GODOT --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log`
-   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 85, wander 22,
-   chase_toy 11, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; the room's
-   ball moved it in M3 Hands step 4). Add `--dogs=12` for the pack
+   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 69, wander 18,
+   chase_toy 10, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; last moved by
+   the outdoor plot in M4 step 2; history in `docs/m2_pack.md`). Add `--dogs=12` for the pack
    soak, also exact (baseline in `tools/verify.sh` and `docs/m2_pack.md`). `--bowls=N`
    adds bowl pairs for big packs. The summary ends with a wall-clock `Frame time:` line.
 4. Screenshot (needs a real renderer, not --headless):

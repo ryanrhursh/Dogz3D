@@ -15,6 +15,7 @@ config/icon="res://icon.svg"
 
 SimClock="*res://sim/sim_clock.gd"
 SaveManager="*res://sim/save_manager.gd"
+Ledger="*res://sim/ledger.gd"
 
 [display]
 

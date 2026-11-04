@@ -5,6 +5,8 @@ const TEST_SPEED := 4.0
 const ChaseToy := preload("res://dog/brain/behaviors/chase_toy.gd")
 ## Open floor for the ball, away from the dog's spot (0, 0.05, 1).
 const FLOOR_SPOT := Vector3(-1.2, 0.06, 1.0)
+## The gap between the couch's east end and the north wall: off the navmesh.
+const BEHIND_COUCH := Vector3(-1.44, 0.06, -3.85)
 
 var hand: HandTool
 var ball: Ball
@@ -92,7 +94,7 @@ func test_ball_setup() -> void:
 	check(ball.movable and not ball.consumable, "movable, not used up")
 	var behaviors := dog.brain.planner.behaviors
 	check(behaviors[behaviors.size() - 1].id == &"chase_toy", "chase_toy is registered last")
-	for wall_name: String in ["South", "East"]:
+	for wall_name: String in ["South", "East", "North", "West"]:
 		var wall := main.get_node("ItemBounds/%s" % wall_name) as StaticBody3D
 		check(wall != null and wall.collision_layer == 16, "%s item bound on layer 5" % wall_name)
 		check(not (wall.get_parent() is NavigationRegion3D), "%s bound is not under the navmesh" % wall_name)
@@ -185,11 +187,14 @@ func test_throw_moves_ball() -> void:
 			"throw speed is capped (%.2f)" % ball.physics_body.linear_velocity.length())
 
 
-func test_bounds_keep_ball_in_room() -> void:
+func test_bounds_keep_ball_in_plot() -> void:
 	SimClock.paused = true
 	dog.global_position = Vector3(-3.0, 0.05, -2.0)
+	# Over the low house walls into the yard, and from the yard at the fence.
 	for shot: Array in [[Vector3(0.0, 0.4, 3.2), Vector3(0.0, 1.5, 7.0)],
-			[Vector3(4.2, 0.4, 0.0), Vector3(7.0, 1.5, 0.0)]]:
+			[Vector3(4.2, 0.4, 0.0), Vector3(7.0, 1.5, 0.0)],
+			[Vector3(2.0, 0.4, 8.6), Vector3(0.5, 1.5, 7.0)],
+			[Vector3(9.6, 0.4, 2.0), Vector3(7.0, 1.5, 0.5)]]:
 		_place_ball(FLOOR_SPOT)
 		await frames(2)
 		hand.pick_from(ball)
@@ -197,8 +202,9 @@ func test_bounds_keep_ball_in_room() -> void:
 		hand.throw_item(shot[1])
 		await frames(600)
 		var at := _ball_at()
-		check(at.z < 4.0 and at.x < 5.0 and at.y > -0.5,
-				"thrown at the low wall, it stays in the room (%s)" % at)
+		check(at.z < 9.75 and at.x < 10.75 and at.y > -0.5,
+				"thrown hard, it stays in the plot (%s)" % at)
+		check(ball.is_reachable(), "and lands where a dog can get it (%s)" % at)
 
 
 func test_respawn() -> void:
@@ -207,6 +213,41 @@ func test_respawn() -> void:
 	await frames(5)
 	check(_flat(_ball_at(), ball.respawn_point) < 0.2 and _ball_at().y > -0.5,
 			"a ball that fell out comes back (%s)" % _ball_at())
+
+
+func test_unreachable_ball_comes_back() -> void:
+	_prep(dog, 40.0)
+	check(ball.unreachable_return_minutes == INF, "parked for the tests, the return is off")
+	ball.unreachable_return_minutes = 5.0
+	_place_ball(FLOOR_SPOT)
+	await frames(30)
+	check(ball.is_reachable(), "on open floor a dog can reach it")
+	for i in 8:
+		ball.advance_minutes(1.0)
+	check(_flat(_ball_at(), FLOOR_SPOT) < 0.3, "a reachable ball stays where it is")
+
+	dog.global_position = Vector3(3.0, 0.05, 2.0)
+	_place_ball(BEHIND_COUCH)
+	await frames(30)
+	check(not ball.is_reachable(), "behind the couch no dog can reach it (%s)" % _ball_at())
+	check(_behavior(dog, &"chase_toy").score(dog) == 0.0, "chase_toy ignores it there")
+	_place_ball(FLOOR_SPOT)
+	await frames(30)
+	check(_behavior(dog, &"chase_toy").score(dog) > 0.0, "but plays with it on the floor")
+	_place_ball(BEHIND_COUCH)
+	await frames(30)
+	for i in 3:
+		ball.advance_minutes(1.0)
+	check(_flat(_ball_at(), BEHIND_COUCH) < 0.3, "not back before its time")
+	ball.advance_minutes(0.5)
+	ball.advance_minutes(0.5)
+	check_near(ball.unreachable_minutes, 4.0, 0.001, "half minutes add up to whole checks")
+	# The last minute goes through the real clock (Ball._process).
+	SimClock.time_scale = 60.0
+	SimClock.paused = false
+	check(await wait_until(func() -> bool: return _flat(_ball_at(), ball.respawn_point) < 0.2, 3.0),
+			"after 5 game minutes out of reach it is back at its respawn point")
+	check(ball.unreachable_minutes == 0.0, "the count starts over")
 
 
 func test_dog_chases_thrown_ball() -> void:
