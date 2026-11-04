@@ -1,45 +1,52 @@
-# Milestone 4 "Estate and economy": plan and progress
+# Milestone 4 "Estate, economy and jobs v0": plan and progress
 
-The house room becomes the first building on a countryside plot. The player builds on the
-plot from data-driven building types, buys supplies, and visitors come to meet the dogs and
-pay for it. This is the town-builder layer from `docs/design.md` ("Build to care": the
-economy is care made visible) in its first, small form: one plot, a handful of buildings,
-three resources that matter (coins, kibble, treats), visitors v0 and save v4.
+The house room becomes the first building on a small countryside plot. The player builds
+on the plot from data-driven building types, buys supplies, grows food in garden beds,
+and the animals earn the town's money with jobs: careers away from home (they leave
+through the gate for a shift and come back with a wage) and the garden, the first
+workplace on the plot. This is the town layer of `docs/design.md` in its first, small
+form: one plot (expansions come with levels and quests in M5/M6), a handful of
+buildings, four resources that matter (coins, kibble, produce, treats), farming v0,
+jobs v0 and save v4. Not a zoo: nobody visits to look at the animals.
 
-Read this when working on M4. Tick steps off here and in DEVELOPMENT.md Status as they land.
-The questions under "Decisions for the owner" are open until the owner answers them; each
-has a recommended default. Steps that depend on one say so and wait for it.
+Read this when working on M4. Tick steps off here and in DEVELOPMENT.md Status as they
+land. The owner's answers are under "Decisions (owner)"; numbers marked *proposed* are
+defaults the owner can still change (they're listed in `TODO.md`).
 
 ## Steps (`tools/verify.sh` after each, then commit)
 
 - [x] 1. Ledger and save v4: `Ledger` autoload (accounts, add/spend, atomic costs, day
       tallies, recent history, signal), `SAVE_VERSION` 4 with a v3 -> v4 migration, F3
-      overlay ECONOMY line, `tests/test_ledger.gd`. Nothing earns or spends yet, so both
-      soak baselines stay exact. Needs no open decision.
-- [ ] 2. Outdoor plot: ground, fence, a doorway out of the house, navmesh over both, the
-      camera bounds widened, item bounds extended. Moves both baselines once, on purpose
-      (dogs wander outside). Needs Q2 (plot size and layout) and Q3 (doorway).
+      overlay balances, `tests/test_ledger.gd`. Both baselines unchanged.
+- [ ] 2. Outdoor plot: 16 x 14 m with the house in its north-west corner, an open 1.5 m
+      doorway in the house's low south wall, grass, a fence with a gate, one navmesh over
+      house and plot, item bounds reworked, camera bounds widened. Moves both baselines
+      once, on purpose (dogs wander outside).
 - [ ] 3. Buildings core (no UI): `BuildingData` Resource, `Building` node, `BuildGrid`
-      (cells, occupancy, can_place/place/remove, navmesh rebake), the first `.tres` set,
-      save of placed buildings, tests. Needs Q4 (first building set) and Q5 (bowls as
-      buildings). Baselines stay (nothing placed in the soaks) unless Q5 moves the bowls.
-- [ ] 4. Build mode: B toggles a top-down camera, grid overlay, palette, ghost
-      preview (green/red), place (pays the cost), rotate, remove (refund), Esc leaves.
-      Code API for tests; screenshot check. Needs Q1 (costs in coins) and Q6 (refund).
-- [ ] 5. Supplies: kibble and treat stock in the ledger; F, `--autofeed` and the treat jar
-      draw from stock; orders from the supply depot arrive after a delivery delay; "out of
-      kibble" shows in the hint and the HUD. `--autofeed` keeps its stock topped up so the
-      soaks stay exact. Needs Q1 (prices) and Q7 (delivery).
-- [ ] 6. Visitors v0: visitors arrive at the gate in opening hours, walk to a few dogs,
-      watch them, pay by how happy the dogs are, and leave. Dogs don't react to visitors in
-      v0 (that keeps the baselines; reactions are a later step). `--visitors` soak flag.
-      Needs Q1 (what a happy dog is worth) and Q8 (visitor numbers and hours).
-- [ ] 7. Economy HUD and soak: resources bar (top-right), a day summary (income and
-      expenses by reason), `--autoowner` (orders supplies, builds from a fixed list), and
-      `tools/verify.sh estate` (12 dogs, 7 game days, not baseline-checked: coins never go
-      negative, supplies get ordered, visitors pay). Tune the numbers from it.
-- [ ] Windowed check on Windows (build mode feel, the plot, readability of the HUD). Then
-      M4 is done.
+      (cells, parcels, occupancy, can_place/place/remove, navmesh rebake), the first six
+      `.tres` types, the room's bowl pair becomes a pre-placed feeding station (baselines
+      must not move), save of placed buildings, tests.
+- [ ] 4. Build mode: B toggles a top-down camera, grid overlay, palette, ghost preview
+      (green/red), place (pays the cost), rotate, remove (full refund), Esc leaves. Code
+      API for tests; screenshot check.
+- [ ] 5. Supplies: new-game balances, kibble and treat stock in the ledger, refills draw
+      from stock, a shop panel with deliveries after 2 game hours, "out of food" hint.
+      `--autofeed` keeps its stock topped up so the soaks stay exact.
+- [ ] 6. Farming v0: garden beds grow produce over game days (plant, tend, harvest by
+      hand in Live mode), `produce` stock, refills use produce before kibble.
+- [ ] 7. Jobs core: `JobData` Resources (three careers away and the gardener), the job
+      board (animals apply by fit once a day, the owner approves, rejects or
+      reassigns; J opens it), fit and performance, wages into the ledger, saved. No
+      animal goes to work yet; baselines unchanged.
+- [ ] 8. Shifts: `go_to_work` (walk out of the gate, away for the shift, back with the
+      wage) and `work_garden` (tend and harvest beds during the shift). Both score 0
+      without a job, so the baselines stay.
+- [ ] 9. Economy HUD and soak: resources bar (top-right), day summary (K), `--autoowner`
+      (approves applications, orders supplies, plants beds, builds from a fixed list),
+      `tools/verify.sh estate` (12 dogs, 7 game days, not baseline-checked: coins never
+      negative, wages paid, food never runs out). Tune the numbers from it.
+- [ ] Windowed check on Windows (the plot, build mode feel, job board, HUD). Then M4 is
+      done.
 
 ## What exists (before M4)
 
@@ -92,7 +99,7 @@ has a recommended default. Steps that depend on one say so and wait for it.
   can group them. `add` and `spend` refuse negative amounts (push_error) so a sign slip
   can't hide as income.
 - **No starting balances yet**: a fresh game and a migrated v3 save both start with no
-  accounts. Q1 sets the new-game balances; they go in through `reset(start)` (not
+  accounts. The new-game balances (step 5) go in through `reset(start)` (not
   income), never through the migration.
 - **History isn't saved**: it's for the HUD's recent-changes list; the day tallies are
   saved, so the day summary survives a reload.
@@ -100,148 +107,145 @@ has a recommended default. Steps that depend on one say so and wait for it.
   help line, so the balances share the ITEMS label and only show once accounts exist.
 - Both baselines, pack30 and `hands` unchanged (nothing earns or spends yet).
 
+## Decisions (owner)
+
+Answered by the owner:
+- **Vision**: a world of animals with real jobs, lives, friends and skill trees; not a
+  zoo. Visitors are dropped. Income comes from the animals' jobs.
+- **Jobs**: both careers away from home and workplaces on the plot from the start. Animals
+  apply for jobs that suit them; the owner approves or reassigns.
+- **Pay** (balanced): a 4-game-hour shift pays 15 coins x performance (0.5-1.5). Kibble 3
+  coins per bowl fill in packs of 10 (30 coins); treats 10 for 15 coins. New game: 150
+  coins, 10 bowl fills of kibble, a full treat jar (10).
+- **Plot**: starts small, 16 x 14 m, and grows later with levels and quests.
+- **Doorway**: an open 1.5 m gap in the house's south wall.
+- **First buildings**: feeding station, dog bed, play yard, path tile, bench (plus the
+  garden bed for farming).
+- **Bowls become buildings**: the room's bowls become a pre-placed feeding station.
+- **Refund**: always 100% when a building is removed.
+- **Food**: more ways to get food than kibble and treats: farming in M4; kitchen,
+  foraging and trade with neighbours later.
+
+*Proposed* (defaults the owner hasn't answered; change them in `TODO.md`):
+- **Delivery**: shop orders arrive as stock 2 game hours later; one order in flight per
+  resource.
+- **Prices**: feeding station 40, dog bed 25, play yard 80, path tile 2, bench 15, garden
+  bed 30 coins. Planting a bed costs 2 coins (seeds).
+- **Garden**: a bed grows in 2 game days (1.5x faster on a day it's tended), yields 3
+  bowl fills of produce. Produce is food for the bowls, used before kibble.
+- **Careers**: courier (energy, boldness), therapy visits (sociability, calm = low
+  energy), show performer (toy drive, trainability); shifts 09:00-13:00. Gardener
+  (workplace; food drive, low stubbornness), shift 07:00-11:00. Up to 3 animals per job.
+- **Performance** = lerp(0.5, 1.5, 0.5 x happiness + 0.5 x fit), happiness = (mood + 1)
+  / 2, fit 0..1 from the job's trait weights. A fit below 0.35 drains fun faster at work.
+
 ## Design
 
 **Resources ledger** (`sim/ledger.gd`, autoload `Ledger`, plain state like SimClock).
-Accounts are StringNames with float balances: `coins`, `kibble` (in bowl fills, the unit
-`WorldItem.fill` already uses: 1.0 is one full bowl, a handful is 0.1), `treats` (pieces),
-later `reputation`. API: `balance(account)`, `add(account, amount, reason)`,
-`spend(account, amount, reason) -> bool` (fails, changing nothing, if the balance is short),
-`can_afford(costs: Dictionary)`, `pay(costs, reason) -> bool` (all or nothing),
-`changed(account, balance, delta, reason)` signal. Day tallies per account and reason
-(`today`, `yesterday`, rolled on `SimClock.day_changed`) feed the day summary; a short
-history (last 50 entries: minute, account, delta, reason) feeds the HUD. `reset()` for
-tests and `--fresh`. Nothing in the brain reads the ledger: dogs live in the world, the
-owner runs the economy.
+Accounts are StringNames with float balances: `coins`, `kibble` and `produce` (in bowl
+fills, the unit `WorldItem.fill` already uses: 1.0 is one full bowl, a handful is 0.1),
+`treats` (pieces), later `reputation`. Every change goes through `add`/`spend`/`pay` with
+a reason; day tallies feed the day summary. Nothing in a brain reads the ledger.
 
-**Save v4.** `SAVE_VERSION` 4. Step 1 adds `"ledger"` (accounts, today, yesterday); the
-migration from v3 adds an empty ledger (the starting balances, once Q1 sets them, are
-given by the new-game setup, not the migration, so old saves aren't handed money twice).
-Later M4 steps add optional sections (`"buildings"`, `"orders"`) that default to empty
-when missing, with no further version bump, so a save written after step 1 still loads
-after step 7. Load order: clock, buildings (they create item nodes), dogs, items, ledger.
-Visitors are not saved (on load, any visit in progress is gone).
+**Save v4.** `SAVE_VERSION` 4 (step 1: `"ledger"`). Later M4 steps add optional sections
+(`"buildings"`, `"orders"`, `"gardens"`, `"jobs"`) that default to empty when missing,
+with no further bump, so a save written after step 1 still loads after step 9. Load
+order: clock, buildings (they create item nodes), dogs, items, ledger, jobs. New-game
+balances are set by the new-game setup through `Ledger.reset(start)`, never by the
+migration, so an upgraded save isn't handed money.
 
-**Outdoor plot.** The house stays as the starting building in one corner of a fenced
-plot; a doorway (a gap in a house wall, no door to open in M4) lets dogs out. Ground:
-grass-colored floor, fence on layer 1 (dogs and the ball stop at it), item bounds over low
-fence parts. One NavigationRegion3D over house and plot, so behaviors keep using the same
-navmesh calls. Camera: Live bounds widened to the plot. The plot is fixed in M4; buying
-more land is later (design: land costs coins and reputation).
+**Outdoor plot.** 16 x 14 m: x from -5.2 to 10.8, z from -4.2 to 9.8, so the house's
+north and west walls are the plot's edges and the yard (about 140 m2) wraps the house's
+south and east sides. The doorway is a 1.5 m gap in the low south wall, always open.
+Grass ground, a fence on layer 1 round the yard (dogs and the ball stop at it), item
+bounds over low fence parts and the low house walls where the ball could leave the plot.
+A gate in the south fence (the way to work for careers). One NavigationRegion3D over house
+and yard, still baked synchronously at startup. Camera Live bounds widened to the plot.
+Land beyond the fence is meadow, visibly fenced off: `BuildGrid` knows parcels (the
+starting one unlocked), so M5/M6 can unlock expansions without a rewrite.
 
 **Buildings** (data, not code). `BuildingData` (`buildings/building_data.gd`, Resource):
-`id`, `display_name`, `scene` (PackedScene: the model plus any child WorldItems, which carry
-the affordances), `footprint` (Vector2i cells), `cost` (Dictionary account -> amount),
-`refund_ratio`, `indoor`/`outdoor` placement flags, `category` (care, play, path, service),
-`description`, later `unlock` (reputation tier, M9). Types live in `buildings/*.tres`; a new
-building is a scene plus a `.tres`, no code. `Building` (`buildings/building.gd`, Node3D)
-knows its data, cell and rotation. `BuildGrid` (`world/build_grid.gd`): 1 m cells over the
-plot (and the house floor for indoor types), occupancy map, blocked cells (house walls,
-furniture, the doorway kept clear), `can_place(data, cell, rot)`, `place(...) -> Building`,
-`remove(building)`. Placing or removing rebakes the navmesh once (synchronous, so seeded
-runs stay deterministic) and releases claims on the removed building's items.
+`id`, `display_name`, `scene` (PackedScene: the model plus any child WorldItems, which
+carry the affordances), `footprint` (Vector2i cells), `cost` (account -> amount),
+`indoor`/`outdoor` flags, `category` (care, play, path, farm, rest), `description`, later
+`unlock`. Types in `buildings/*.tres`; a new building is a scene plus a `.tres`.
+`Building` (`buildings/building.gd`, Node3D) knows its data, cell and rotation.
+`BuildGrid` (`world/build_grid.gd`): 1 m cells, parcels, occupancy, blocked cells (walls,
+furniture, the doorway and gate kept clear), `can_place(data, cell, rot)`,
+`place(...) -> Building`, `remove(building)` (full refund). Placing or removing rebakes the
+navmesh once, synchronously (deterministic), and releases claims on removed items.
+First six: feeding station (food + water bowl, 1 x 2), dog bed (1 x 1), play yard (4 x 4
+low fence with a ball), path tile (1 x 1, cosmetic in v0), bench (1 x 1, cosmetic in
+v0; a rest spot later), garden bed (2 x 1, farming). The room's bowls become a pre-placed
+feeding station at their current spot; old saves' `Items/FoodBowl` and `Items/WaterBowl`
+paths map to it.
 
-**Build mode.** B in Live mode. The camera rig gets a third mode, top-down over the plot
-(eased like close-up, exit restores the Live view). Grid lines and blocked cells drawn on
-the ground. Palette bottom-center: one button per BuildingData the player can afford
-(price shown, greyed if short). Ghost of the selected type follows the cursor, snapped
-to cells, green if `can_place` and affordable, red otherwise. LMB place (`Ledger.pay`),
-R rotate 90 degrees, X or Delete on a building removes it (refund by Q6), Esc or B
-leaves. RMB stays camera orbit. Dogs keep living while you build (time doesn't stop;
-Space pauses as always). Code API for tests and `--autoowner`: `select_type(data)`,
-`hover_cell(cell)`, `confirm() -> Building`, `remove_at(cell)`.
+**Build mode.** B in Live mode. The camera rig gets a top-down mode (eased like
+close-up; exit restores the Live view). Grid lines and blocked cells on the ground.
+Palette bottom-center: one button per type with its price, greyed if short. Ghost follows
+the cursor snapped to cells, green if placeable and affordable, red otherwise. LMB place
+(`Ledger.pay`), R rotate 90 degrees, X or Delete removes a building (full refund), Esc or
+B leaves. RMB stays camera orbit. Time keeps running (Space pauses). Code API:
+`select_type(data)`, `hover_cell(cell)`, `confirm() -> Building`, `remove_at(cell)`.
 
-**Supplies.** Kibble and treats are stock in the ledger. Refilling a bowl (F, the bowl
-station later, `--autofeed`) moves `1 - fill` kibble from stock into the bowl; with too
-little stock it fills what there is and the hint says "Out of kibble". The treat jar draws
-treats the same way. Water stays free (design: capacity, not a cost; a well or pump is a
-later building). Orders: from the supply depot (a fixed service building by the gate),
-buy a pack (Q1, Q7); it arrives after the delivery delay, as a crate at the depot that
-adds to stock when it lands (or straight into stock in v0, Q7). Orders in flight are
-saved. `--autofeed` gets free top-ups of exactly what it refills, so the default soaks
-stay exact; `--autoowner` (step 7) orders and pays like a player.
+**Supplies.** Refilling a bowl (F, `--autofeed`, later a caretaker job) moves `1 - fill`
+food from stock into it: produce first, then kibble; with too little it fills what there
+is and the hint says "Out of food". The treat jar draws treats. Water stays free (a well
+is a later building). The shop panel (in the K summary) buys packs; an order arrives as
+stock after the delivery delay; orders in flight are saved. `--autofeed` gets free
+top-ups of exactly what it refills, so the default soaks stay exact; `--autoowner` (step
+9) buys like a player.
 
-**Visitors v0.** A visitor is a simple node (capsule, own walk on the navmesh, no physics
-collision with dogs, not in the `dogs` group, no avoidance shared with dogs) with its own
-tiny state machine, not a DogBrain: arrive at the gate -> walk to up to 3 dogs in turn
-(nearest awake dog it hasn't met, within the plot) -> stand 2 m off and watch for a few
-game minutes (emote) -> pay -> leave. Payment = entry fee + a tip per dog met, scaled by
-that dog's happiness (Q1). Arrivals come from a seeded schedule
-(`hash([seed, "visitors"])`), so seeded runs repeat. In v0 dogs don't notice visitors: no
-stimulus, no behavior, no `brain.rng` use, so turning visitors on doesn't change any dog's
-choices. Dogs greeting visitors (and the Companion skill tree's greeter bonus) come later,
-through the body API (`Dog.notice(&"visitor", point)` -> a `greet_visitor` behavior that
-scores 0 without a visitor near).
+**Farming v0.** A garden bed (building) is empty, planted, growing or ripe. Planting costs
+seeds (coins); it grows over game days, faster on a day someone tended it; ripe, it is
+harvested into `produce` stock. In Live mode the player clicks a bed to plant, tend or
+harvest it; the gardener job does the same during its shift. Beds are saved (state,
+growth). Animals don't eat from beds directly in v0 (that would need a new behavior and
+move the baselines); produce reaches them through the bowls.
 
-**HUD.** Resources bar top-right: coins, kibble (bowl fills), treats, and a small
-"+12 visitor" float on income. The day summary (income and expenses by reason, from the
-ledger's tallies) opens with K and shows at the first frame of a new day for a few seconds.
-Both stay clear of the F3 overlay (top-left), the dog card (bottom-right) and the close-up
-hint (top-center).
+**Jobs v0.** `JobData` (`jobs/job_data.gd`, Resource; `jobs/*.tres`): `id`,
+`display_name`, `kind` (away or workplace), `shift_start_hour`, `shift_hours`,
+`base_wage`, `trait_weights` (trait -> weight, the fit), `workplace_affordance` (for
+workplace jobs), `max_workers`, `description`. `JobBoard` (`jobs/job_board.gd`, a node in
+main.tscn, group `job_board`): once a game day each animal without a job applies for the
+job it fits best (if the fit is at least 0.5 and the job has room); the owner approves,
+rejects or reassigns on the board (J). Assignments are saved. Fit and performance are
+computed by the board from the body's personality (`Dog.get_dog_info` style), never by a
+brain reading another system. The brain learns its shift only through the body
+(`Dog.get_job_shift()`), so a dog without a job scores 0 on the shift behaviors and never
+touches `brain.rng`.
+- **Careers away** (`go_to_work`): near shift start the dog walks to the gate (scores high,
+  interrupted only by urgent needs >= 0.9), then the body goes away: hidden, collisions
+  off, out of `dogs_near`/`find_nearest_dog`, claims released, its brain only drains
+  needs (like `simulate_offline`) for the shift. At the end it reappears at the gate and
+  the board pays the wage (`Ledger.add(&"coins", wage, &"wage")`).
+- **Workplace** (`work_garden`): during the shift the gardener walks to beds that need
+  planting, tending or harvesting and does it; paid the same way at the end.
+- A missed shift (asleep, an urgent need) pays nothing; three in a row and the animal
+  asks for another job on the board.
+
+**HUD.** Resources bar top-right: coins, food stock (produce + kibble, bowl fills),
+treats, a small "+15 wage" float on income. K opens the day summary (income and expenses
+by reason) with the shop; J the job board. All clear of the F3 overlay (top-left), the dog
+card (bottom-right) and the close-up hint (top-center).
 
 **Baseline rules for M4.** New systems must not move the 1- and 12-dog baselines unless
-their trigger is present in the soak, and the soaks don't build, order or have visitors.
-Two moves are expected and are recorded deliberately in their step's commit, in
-`tools/verify.sh`, DEVELOPMENT.md, README.md and `docs/m2_pack.md`: step 2 (the plot
-changes the navmesh, so `random_point_near` and wander paths change), and step 3 only if
-Q5 moves the bowls. Run verify twice after each move to check it's stable. pack30 and
-`hands` will shift with any physics or navmesh change (chaotic); check them for
-ERROR/WARNING and sane needs only.
-
-## Decisions for the owner
-
-Each has a recommended default; say "defaults" to take them all.
-
-- **Q1. Currency and numbers: what a happy dog is worth.** Recommended: one currency,
-  coins (as `docs/design.md`). Visitor pays an entry fee of 5 coins plus, per dog met,
-  a tip of `round(4 x h)` coins, where h = happiness 0..1 = (mood + 1) / 2, x 1.25 if the
-  dog's bond >= 50 (a dog that trusts you shows off). So a content dog (mood +0.4) earns
-  about 3 coins a visit, a miserable one 0-1. Kibble: 3 coins per bowl fill, sold in
-  packs of 10 fills (30 coins). Treats: 10 for 15 coins. Start: 150 coins, 10 fills of
-  kibble, a full treat jar. For scale: in the one-dog soak a dog eats about 3.5 bowl
-  fills over 48 h (3 refills by `--autofeed`), about 5 coins a day; 12 dogs cost roughly
-  60 coins a day in kibble. A visitor who meets 3 content dogs pays 5 + 3 x 3 = 14, so
-  about 5 visitors a day break even and 7 (Q8) leave some 35 coins a day to build with.
-  Tune in step 7 with the estate soak.
-- **Q2. Plot size and layout.** Recommended: 30 x 24 m fenced plot, the house in the
-  north-west corner, gate and supply depot on the south fence, about 450 m2 of open
-  ground to build on. Big enough for 30 dogs and a few play yards, small enough that the
-  navmesh rebake stays well under 100 ms.
-- **Q3. Doorway.** Recommended: a 1.5 m gap in the south (low) wall of the house, west of
-  the rug, always open. Alternative: a dog door building the player places (cuts the
-  dogs off from the plot until built).
-- **Q4. The first building set** (step 3; all `.tres` + scene). Recommended five:
-  feeding station (food + water bowl pair, 1 x 2 cells, 40 coins), dog bed (1 x 1, 25),
-  play yard (4 x 4 low fence with a ball, 80), path tile (1 x 1, 2; visitors prefer
-  paths, a later attraction bonus), bench (1 x 1, 15; visitors rest, cosmetic in v0).
-  Fixed, not buildable: house, gate, supply depot. Kitchen and garden (treats from
-  ingredients) wait for M6, where ingredients come from expeditions.
-- **Q5. Do bowls become buildings?** Recommended: yes. The room's bowl pair becomes a
-  pre-placed feeding station at the same spot, so the dogs and the baselines don't
-  notice; `--bowls=N` places more stations; the save migration maps the old
-  `Items/FoodBowl` and `Items/WaterBowl` paths to the station's. The loose dog bed and
-  treat jar stay items.
-- **Q6. Remove refund.** Recommended: 50% of the cost back, 100% within 1 game minute of
-  placing (an undo for misclicks).
-- **Q7. Deliveries.** Recommended: an order arrives 2 game hours later as stock (no
-  crate to carry in v0), one order in flight per resource type, placed from the depot
-  or the HUD (K summary page) with a button.
-- **Q8. Visitors.** Recommended: open 10:00-17:00, one visitor every 40-80 game minutes
-  (about 7 a day), at most 3 on the plot at a time, each meets up to 3 dogs. No
-  reputation gate in M4; track `reputation` in the ledger (+1 per visitor who met a
-  happy dog) so M9 tiers have history to start from.
-- **Q9. Is a dog's happiness only mood?** Recommended: yes for v0 (mood is already the
-  care summary: every need feeds it). Skills that change earnings (greeter) come with M5.
+their trigger is present in the soak, and the soaks don't build, order, plant or assign
+jobs. Expected moves, recorded deliberately in their step's commit: step 2 (the plot
+changes the navmesh, so `random_point_near` and wander paths change). Step 3 must not move
+them (the feeding station keeps the bowls' spots and fills). Run verify twice after each
+move. pack30 and `hands` shift with any physics or navmesh change; check them for
+ERROR/WARNING and sane needs.
 
 ## Known open questions (resolve during the milestone, don't block on them)
 
-- Navmesh rebake cost on the bigger plot with many buildings; if it shows, bake per
-  building region (one NavigationRegion3D each, linked) instead of one big region.
-- Indoor building: whether the house floor is on the build grid in M4 or only the plot.
-- Should dogs prefer indoors at night (sleep in the house)? Today they sleep at the bed
-  item wherever it is; a second bed outdoors may split the pack.
-- Mess (droppings, muddy paws) is the design's upkeep sink; it fits M7 (staff and
-  cleaning) better than M4.
-- Toys wearing out (design: a sink for toys) is left for later; the ball doesn't wear.
-- Offline catch-up and the economy: visitors and deliveries while away. v0: deliveries
-  complete, visitors don't come (no income while away, nothing lost either).
+- Navmesh rebake cost as buildings add up; if it shows, bake per building region instead
+  of one big region.
+- Indoor building: whether the house floor is on the build grid in M4 or only the yard.
+- Friends and an animal at work: should friends miss it (greet it at the gate)? v0: it's
+  simply not around.
+- Offline catch-up: a shift that spans the time away completes and pays; beds grow.
+- Should animals prefer indoors at night? Today they sleep at the bed item wherever it is.
+- Mess and caretaker/cleaner jobs fit M7; the kitchen too (produce into treats).
+- Other species: jobs and buildings are data keyed by affordances and traits, so cats and
+  others can take jobs once SpeciesData exists.

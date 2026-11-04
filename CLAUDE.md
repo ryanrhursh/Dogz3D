@@ -72,11 +72,21 @@ These override any default attribution behavior.
 - A script error makes headless Godot hang; verify has timeouts, so read the logs in
   `/tmp/dogz3d-verify/` when it fails.
 
+## The owner's board: `TODO.md`
+
+`TODO.md` is the owner's one place to look: their to-do list, every decision (answered,
+proposed, open) and progress per milestone step. Keep it current in every commit that
+changes any of those. Ask the owner open questions directly in the reply (one click per
+question where the tool allows it), and record the answers in the plan doc and `TODO.md`.
+Proposed defaults the owner hasn't confirmed go in `TODO.md` marked "proposed": work
+goes ahead on them, and the owner changes any they don't like.
+
 ## Replies to the owner
 
+Make things as easy for the owner as possible: short, plain, no jargon they don't need.
 End every reply with the owner's to-do list ("What I need to do"), so it is the last
 thing in the message: the merge link and what it merges (when there is one), things to
-check by hand, decisions to answer. Nothing comes after it.
+check by hand, decisions to answer, and when to look at `TODO.md`. Nothing comes after it.
 
 ## End of every session: handoff (mandatory)
 
@@ -96,6 +106,7 @@ blocked or only partly done:
      write them into Pitfalls instead).
 4. **Which model and effort level to use for the next session, and why.**
 5. **What I need to do** (last, per "Replies to the owner"): start with the merge link
-   and what it merges; then things to check by hand; then decisions to answer.
+   and what it merges; then things to check by hand; then decisions to answer. Update
+   `TODO.md` to match before the final commit.
 
 Don't skip parts 3 and 4 because the next step "is obvious" or the session is short.

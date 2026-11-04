@@ -1,10 +1,11 @@
 # Dogz 3D (working title)
 
-A cozy dog sanctuary town builder (see `docs/design.md`, roadmap in `docs/roadmap.md`).
+A cozy life sim and town builder in a world of animals (see `docs/design.md`, roadmap in
+`docs/roadmap.md`).
 Current build: the gray box, a pack of capsule-shaped corgis with needs, personalities,
 relationships and utility-AI brains, living in a one-room diorama with a day/night cycle.
 Click a dog twice for close-up mode, where your hand pets, hand-feeds and throws a ball.
-The town economy is next.
+The town economy (plot, building, supplies, farming and jobs) is next.
 
 Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the editor and press F5.
 
