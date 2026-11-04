@@ -4,7 +4,9 @@ extends Node3D
 ## hovering a touch zone of the close-up dog highlights it, a press pats it, and dragging
 ## strokes it (one stroke per STROKE_DISTANCE of hand travel). Pressing on the food bowl
 ## or treat jar takes a piece (the item's hand_piece); letting go near a dog's head feeds
-## it, anywhere else drops it on the floor. Off in Live mode, where LMB selects dogs.
+## it, anywhere else drops it on the floor. Pressing on the ball (on the floor or in a
+## dog's mouth) grabs it; letting go while the hand moves fast throws it with the hand's
+## recent velocity, a slow release just drops it. Off in Live mode, where LMB selects dogs.
 ##
 ## Items held by the hand follow the Anchor child, which is in group "player_hands".
 ## Code-facing API (tests, and the --autohands soak later): stroke(), pick_from(),
@@ -29,6 +31,18 @@ const FEED_RADIUS := 0.45
 const NOTICE_RANGE := 4.0
 ## ...when it's picked up and each time the hand has moved this far since.
 const NOTICE_EVERY := 1.5
+## Hand velocity is measured over this many real seconds of hand points.
+const VELOCITY_WINDOW := 0.1
+## A release with the hand moving slower than this (flat m/s) drops instead of throwing.
+const THROW_MIN_SPEED := 1.2
+## Throws are capped at this speed (m/s), so a wild flick stays in the room.
+const MAX_THROW_SPEED := 7.0
+## A mouse throw gets this much upward speed per m/s of flat speed, for an arc.
+const THROW_LIFT := 0.3
+## Vertical hand speed (m/s) a mouse throw keeps, before the lift.
+const THROW_MAX_UP := 2.0
+## Awake dogs within this many flat metres see a throw.
+const THROW_NOTICE_RANGE := 10.0
 
 ## &"off" (Live mode), &"hover", &"petting", or &"carrying" (from step 3).
 var state: StringName = &"off"
@@ -59,6 +73,8 @@ var _last_drag_point := Vector3.ZERO
 var _travel := 0.0
 var _press_strokes := 0
 var _last_notice_point := Vector3.ZERO
+## Recent hand points while carrying, [real seconds, point], oldest first.
+var _samples: Array = []
 ## True between activate() and deactivate(): the mouse drives the hand. The code API
 ## works without it (state can be &"carrying" in Live mode then).
 var _closeup := false
@@ -89,8 +105,9 @@ func activate(target: Dog) -> void:
 	_closeup = true
 	if state == &"off":
 		state = &"hover"
-	_hint.text = ("Close-up with %s   ·   LMB pat, drag to stroke   ·   " \
-			+ "hold LMB on bowl or jar, let go at the head to feed   ·   Esc back") % target.dog_name
+	_hint.text = ("Close-up with %s   ·   LMB pat, drag to stroke   ·   Esc back\n" \
+			+ "hold LMB on bowl or jar, let go at the head to feed   ·   " \
+			+ "grab the ball, flick and let go to throw") % target.dog_name
 	_set_visuals(true)
 
 
@@ -124,11 +141,17 @@ func stroke(target: Dog, zone_id: StringName, strokes: int = 1) -> StringName:
 
 
 ## Takes a piece from `item` (kibble from a bowl with enough fill, a treat from the jar)
-## or picks up a loose movable item (a dropped treat). The hand starts carrying it and
-## nearby dogs notice. False if there's nothing to take or the hand is already full.
+## or picks up a loose movable item (a dropped treat, the ball, also from a dog's mouth).
+## The hand starts carrying it and nearby dogs notice food. False if there's nothing to
+## take or the hand is already full.
 func pick_from(item: WorldItem) -> bool:
-	if item == null or not is_instance_valid(item) or held_item != null or item.held:
+	if item == null or not is_instance_valid(item) or held_item != null:
 		return false
+	if item.held:
+		var mouth := _dog_holding(item)
+		if mouth == null or not item.movable:
+			return false
+		mouth.drop_held()
 	var piece: WorldItem = null
 	if item.hand_piece != null:
 		if item.fill < item.hand_piece_fill - 0.0001:
@@ -144,6 +167,7 @@ func pick_from(item: WorldItem) -> bool:
 		_move_hand(item.global_position + Vector3(0.0, CARRY_HEIGHT, 0.0))
 	piece.attach_to(anchor)
 	held_item = piece
+	_samples.clear()
 	state = &"carrying"
 	_set_hover(null)
 	hovered_item = null
@@ -179,9 +203,71 @@ func release_at(point: Vector3) -> Dog:
 	return null
 
 
-## Step 4 (ball) fills this in.
-func throw_item(_velocity: Vector3) -> void:
-	pass
+## Throws the carried item from where the hand is with `velocity` (capped at
+## MAX_THROW_SPEED). Awake dogs in sight notice (&"ball_thrown") and may chase it. Items
+## without a physics body can't fly: they're released as with release_at. True if thrown.
+func throw_item(velocity: Vector3) -> bool:
+	if held_item == null:
+		return false
+	if not is_instance_valid(held_item):
+		_forget_held()
+		return false
+	var item := held_item
+	if item.physics_body == null:
+		release_at(hand_point)
+		return false
+	_forget_held()
+	item.detach(velocity.limit_length(MAX_THROW_SPEED))
+	last_reaction = "threw the %s" % item.display_name.to_lower()
+	for node in get_tree().get_nodes_in_group("dogs"):
+		var d := node as Dog
+		if d == null or d.sleeping:
+			continue
+		var offset := d.global_position - hand_point
+		offset.y = 0.0
+		if offset.length() <= THROW_NOTICE_RANGE:
+			d.notice(&"ball_thrown", hand_point)
+	return true
+
+
+## The hand's velocity over the last VELOCITY_WINDOW real seconds while carrying (zero if
+## it has too few points). `now` is in real seconds; it defaults to the current time.
+func hand_velocity(now: float = -1.0) -> Vector3:
+	if now < 0.0:
+		now = Time.get_ticks_usec() / 1000000.0
+	if _samples.size() < 2:
+		return Vector3.ZERO
+	var newest: Array = _samples.back()
+	if now - float(newest[0]) > VELOCITY_WINDOW:
+		return Vector3.ZERO
+	var oldest: Array = newest
+	for sample: Array in _samples:
+		if now - float(sample[0]) <= VELOCITY_WINDOW:
+			oldest = sample
+			break
+	var dt := float(newest[0]) - float(oldest[0])
+	if dt < 0.01:
+		return Vector3.ZERO
+	var to: Vector3 = newest[1]
+	var from: Vector3 = oldest[1]
+	return (to - from) / dt
+
+
+## Records a hand point at real time `at` (seconds) for hand_velocity. _move_hand does
+## this while carrying; tests call it with made-up times.
+func add_hand_sample(point: Vector3, at: float) -> void:
+	_samples.append([at, point])
+	while _samples.size() > 2 and at - float(_samples[0][0]) > VELOCITY_WINDOW * 2.0:
+		_samples.pop_front()
+
+
+## The throw a mouse release makes from hand velocity `v`: the flat part as is, the
+## vertical part capped, plus some lift for an arc. Zero if the hand was too slow.
+static func throw_from_hand(v: Vector3) -> Vector3:
+	var flat := Vector2(v.x, v.z).length()
+	if flat < THROW_MIN_SPEED:
+		return Vector3.ZERO
+	return Vector3(v.x, clampf(v.y, -THROW_MAX_UP, THROW_MAX_UP) + flat * THROW_LIFT, v.z)
 
 
 ## Starts a press on `zone` with the hand at `point`: pats it once. Mouse input and
@@ -249,7 +335,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif collider != null:
 				pick_from(WorldItem.from_collider(collider))
 		elif state == &"carrying":
-			release_at(hand_point)
+			_release_from_mouse()
 		else:
 			release()
 		get_viewport().set_input_as_handled()
@@ -298,7 +384,7 @@ func _hover_from_screen(screen_pos: Vector2) -> void:
 		return
 	_set_hover(null)
 	var item := WorldItem.from_collider(collider)
-	if item != null and not item.held and (item.hand_piece != null or item.movable):
+	if _can_take(item):
 		hovered_item = item
 		Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND)
 	else:
@@ -344,7 +430,39 @@ func _raycast(screen_pos: Vector2) -> Dictionary:
 	var to := from + cam.project_ray_normal(screen_pos) * RAY_LENGTH
 	var query := PhysicsRayQueryParameters3D.create(from, to, RAY_MASK)
 	query.collide_with_areas = true
+	# A carried ball rides at the hand point: don't let the ray land on it.
+	if held_item != null and is_instance_valid(held_item) and held_item.physics_body != null:
+		query.exclude = [held_item.physics_body.get_rid()]
 	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+## Mouse release while carrying: a throwable item leaves with the hand's velocity if the
+## hand was moving fast enough, everything else is let go at the hand.
+func _release_from_mouse() -> void:
+	if held_item != null and is_instance_valid(held_item) \
+			and held_item.has_affordance(&"throwable"):
+		var v := throw_from_hand(hand_velocity())
+		if v != Vector3.ZERO:
+			throw_item(v)
+			return
+	release_at(hand_point)
+
+
+## True if the hand could take `item`: a piece source, or a loose movable item that is
+## lying around or in a dog's mouth.
+func _can_take(item: WorldItem) -> bool:
+	if item == null or not (item.hand_piece != null or item.movable):
+		return false
+	return not item.held or _dog_holding(item) != null
+
+
+## The dog with `item` in its mouth, or null.
+func _dog_holding(item: WorldItem) -> Dog:
+	for node in get_tree().get_nodes_in_group("dogs"):
+		var d := node as Dog
+		if d != null and d.held_item == item:
+			return d
+	return null
 
 
 # --- Internals -----------------------------------------------------------------------
@@ -365,7 +483,9 @@ func _drop(point: Vector3) -> void:
 	if item == null or not is_instance_valid(item):
 		return
 	item.detach()
-	item.get_root().global_position = _floor_below(point)
+	# Things that roll just fall from the hand; the rest land on the surface below.
+	if item.physics_body == null:
+		item.get_root().global_position = _floor_below(point)
 	last_reaction = "dropped the %s" % item.display_name.to_lower()
 
 
@@ -393,6 +513,8 @@ func _dog_at_mouth(point: Vector3) -> Dog:
 
 func _notice_dogs() -> void:
 	_last_notice_point = hand_point
+	if held_item == null or not held_item.has_affordance(&"food"):
+		return
 	for node in get_tree().get_nodes_in_group("dogs"):
 		var d := node as Dog
 		if d == null:
@@ -440,6 +562,7 @@ func _move_hand(point: Vector3) -> void:
 	# The held item would catch up next physics frame; move it now so it never lags.
 	if held_item != null and is_instance_valid(held_item):
 		held_item.get_root().global_position = point
+		add_hand_sample(point, Time.get_ticks_usec() / 1000000.0)
 
 
 func _set_visuals(on: bool) -> void:

@@ -4,9 +4,10 @@
 # exits non-zero on any ERROR/WARNING line, test failure or baseline change. Logs go to
 # $LOG_DIR.
 #   tools/verify.sh            # all four
-#   tools/verify.sh soak       # one or more of: import test soak pack pack30
+#   tools/verify.sh soak       # one or more of: import test soak pack pack30 hands
 # pack30 (30 dogs, 2 bowl pairs, about 45 s) is not in the default run; it checks errors
-# and prints needs and frame time.
+# and prints needs and frame time. hands (12 dogs with the --autohands simulated owner)
+# isn't either; it checks errors and prints needs and what the owner did.
 #
 # A baseline change fails the run. If the change is intended (new tuning), update the
 # baseline below and in docs/m2_pack.md, and say why in the commit.
@@ -20,8 +21,8 @@ mkdir -p "$LOG_DIR"
 STEPS="${*:-import test soak pack}"
 FAIL=0
 # Behavior choice counts, name=count sorted by name (Godot 4.6.1 Linux headless, seed 42).
-SOAK_BASELINE="drink=11 eat=9 idle=90 sleep=5 wander=24"
-PACK_BASELINE="drink=48 eat=57 greet=242 idle=656 play_together=266 sleep=97 wait_turn=106 wander=174"
+SOAK_BASELINE="chase_toy=11 drink=10 eat=10 idle=85 sleep=7 wander=22"
+PACK_BASELINE="chase_toy=23 drink=59 eat=59 greet=243 idle=720 play_together=263 sleep=98 wait_turn=103 wander=177"
 
 # "Behavior choices: { &"idle": 90, ... }" -> "idle=90 ..." sorted by name.
 choices() {
@@ -88,6 +89,14 @@ for step in $STEPS; do
 			check_log pack30 "$LOG_DIR/pack30.log"
 			grep -A4 "^Behavior choices" "$LOG_DIR/pack30.log" | sed 's/^/[pack30] /' \
 				|| { echo "[pack30] no summary"; FAIL=1; }
+			;;
+		hands)
+			$T $G --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 \
+				--quit-after-hours=48 --autofeed --autohands --seed=42 --dogs=12 \
+				> "$LOG_DIR/hands.log" 2>&1 || FAIL=1
+			check_log hands "$LOG_DIR/hands.log"
+			grep -A5 "^Behavior choices" "$LOG_DIR/hands.log" | sed 's/^/[hands] /' \
+				|| { echo "[hands] no summary"; FAIL=1; }
 			;;
 		*)
 			echo "unknown step: $step"

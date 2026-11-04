@@ -14,10 +14,12 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: M3 Hands steps 4–5 (see `docs/m3_hands.md`).
-- M3 Hands (close-up mode): steps 1–3 of 5 done (plumbing and test harness; close-up
+- NEXT: the M3 windowed check on Windows, then write `docs/m4_estate.md` (M4 plan).
+- M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
-  treat jar and come_for_food). See `docs/m3_hands.md`.
+  treat jar and come_for_food; the ball, item bounds, throwing and chase_toy; the
+  `--autohands` simulated owner). Left: a windowed check on Windows. See
+  `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
   roadmap.
 
@@ -50,7 +52,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   goes through the body API.
 - A social behavior must score 0, and not touch `brain.rng`, when no other dog is near, so
   the one-dog soak baseline stays exact. Likewise a hand behavior scores 0 (early-out on
-  `brain.stimuli.is_empty()`) until the player's hand does something.
+  `brain.stimuli.is_empty()`) until the player's hand does something. The exception is
+  `chase_toy`, which also plays with the ball lying in the room (so the baselines include
+  it); keep its scoring cheap (early-outs before the item scan).
 - Player input reaches a brain only through the Dog body (`touch`, later `feed_from_hand`,
   `notice`), which calls a `DogBrain.on_*` handler. Handlers record a stimulus and force
   a re-evaluation next tick (no min_duration, no eval budget).
@@ -71,8 +75,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 
 Linux: `tools/verify.sh` does all of it (import, tests, one-dog soak, 12-dog pack soak,
 both soaks checked against their exact baselines) in about a minute, and prints VERIFY OK
-or the offending lines. `tools/verify.sh pack30` adds a 30-dog soak (not in the default
-run). `tools/godot.sh` downloads
+or the offending lines. `tools/verify.sh pack30` adds a 30-dog soak and
+`tools/verify.sh hands` a 12-dog soak with the `--autohands` simulated owner (neither is in
+the default run or baseline-checked). `tools/godot.sh` downloads
 and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows, point `GODOT` at
 `Godot_v4.6.1-stable_win64_console.exe` and run the steps by hand.
 
@@ -81,8 +86,9 @@ and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows
    Prints PASS/FAIL lines and exits 1 on failure. Suites live in `tests/`.
 3. Soak test, which runs 48 game hours in seconds and prints a summary:
    `GODOT --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log`
-   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 90, wander 24,
-   drink 11, eat 9, sleep 5 (exact on 4.6.1 Linux headless). Add `--dogs=12` for the pack
+   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 85, wander 22,
+   chase_toy 11, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; the room's
+   ball moved it in M3 Hands step 4). Add `--dogs=12` for the pack
    soak, also exact (baseline in `tools/verify.sh` and `docs/m2_pack.md`). `--bowls=N`
    adds bowl pairs for big packs. The summary ends with a wall-clock `Frame time:` line.
 4. Screenshot (needs a real renderer, not --headless):

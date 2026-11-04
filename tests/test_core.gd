@@ -82,7 +82,8 @@ func test_touch_zones_queryable() -> void:
 
 func test_hold_offer_and_mouth() -> void:
 	var item := WorldItem.new()
-	item.affordances = PackedStringArray(["toy"])
+	# Not "toy": the room's ball would be the nearest one.
+	item.affordances = PackedStringArray(["test_toy"])
 	item.movable = true
 	main.get_node("Items").add_child(item)
 	item.global_position = dog.global_position + Vector3(1.0, 0.0, 0.0)
@@ -91,13 +92,13 @@ func test_hold_offer_and_mouth() -> void:
 	main.add_child(hand)
 	hand.global_position = dog.global_position + Vector3(0.0, 0.8, 1.0)
 
-	check(dog.find_nearest_item(&"toy") == item, "loose toy is found")
+	check(dog.find_nearest_item(&"test_toy") == item, "loose toy is found")
 	item.attach_to(hand)
 	hand.global_position += Vector3(0.3, 0.0, 0.0)
 	await frames(2)
 	check(item.global_position.distance_to(hand.global_position) < 0.001, "held item follows hand")
-	check(dog.find_nearest_item(&"toy") == null, "held toy is skipped by find_nearest_item")
-	check(dog.find_offered_item(&"toy") == item, "hand-held toy is offered")
+	check(dog.find_nearest_item(&"test_toy") == null, "held toy is skipped by find_nearest_item")
+	check(dog.find_offered_item(&"test_toy") == item, "hand-held toy is offered")
 
 	check(not dog.pick_up(item), "dog can't take an item someone holds")
 	item.detach()
@@ -105,7 +106,7 @@ func test_hold_offer_and_mouth() -> void:
 	await frames(2)
 	check(dog.held_item == item, "dog holds it")
 	check(item.global_position.distance_to(dog.get_mouth_position()) < 0.001, "item sits in the mouth")
-	check(dog.find_offered_item(&"toy") == null, "mouth-held toy is not offered")
+	check(dog.find_offered_item(&"test_toy") == null, "mouth-held toy is not offered")
 	dog.drop_held()
 	check(not item.held and dog.held_item == null, "dog dropped it")
 

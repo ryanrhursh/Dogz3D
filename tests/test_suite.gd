@@ -22,8 +22,12 @@ func setup(p_runner: Node, p_main: Node3D) -> void:
 	pack = p_main.get_node("Pack") as Pack
 
 
+## Where park_ball() puts the room's ball: on the table, out of every dog's reach.
+const BALL_PARK := Vector3(1.6, 0.82, 0.45)
+
+
 ## Runs before every test. Default: the pack trimmed to one fresh seed-42 dog,
-## selected, fast clock running.
+## selected, fast clock running, and the ball parked out of reach.
 func before_each() -> void:
 	if pack.dogs.is_empty():
 		pack.adopt()
@@ -34,7 +38,30 @@ func before_each() -> void:
 	pack.select(dog)
 	SimClock.paused = false
 	SimClock.time_scale = 60.0
+	park_ball()
 	await frames(2)
+
+
+## The room's ball (its WorldItem), or null.
+func get_ball() -> Ball:
+	return main.get_node_or_null("Items/Ball/Item") as Ball
+
+
+## Puts the ball on the table where no dog can reach it, so chase_toy scores 0 and
+## suites that aren't about the ball run as before it existed.
+func park_ball() -> void:
+	var ball := get_ball()
+	if ball == null:
+		return
+	if ball.held:
+		for d in pack.dogs:
+			if d.held_item == ball:
+				d.drop_held()
+		if ball.held:
+			ball.detach()
+	ball.get_root().global_position = BALL_PARK
+	ball.physics_body.linear_velocity = Vector3.ZERO
+	ball.physics_body.angular_velocity = Vector3.ZERO
 
 
 func after_each() -> void:

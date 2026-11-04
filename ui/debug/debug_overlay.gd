@@ -7,7 +7,8 @@ const NEED_ORDER := [&"hunger", &"thirst", &"energy", &"fun", &"affection"]
 const HELP_TEXT := "RMB drag orbit · wheel zoom · WASD pan · C follow dog    " \
 		+ "LMB/Tab select dog · LMB selected dog close-up · Esc leave · N adopt · I dog card    " \
 		+ "1-4 speed · Space pause\n" \
-		+ "Close-up: LMB pat · drag stroke · hold LMB on bowl/jar, let go at head to feed    " \
+		+ "Close-up: LMB pat · drag stroke · hold LMB on bowl/jar, let go at head to feed · " \
+		+ "grab ball, flick to throw\n" \
 		+ "E pet · F refill food · G refill water    " \
 		+ "F3 overlay · F5 save · F9 load · F8 re-roll dog"
 
@@ -160,6 +161,8 @@ func _hands_text(d: Dog) -> String:
 	if not fed.is_empty():
 		lines.append("hand-fed %s, %.1f min ago" % ["treat" if bool(fed["treat"]) else "kibble",
 				brain.stimulus_age(&"hand_fed")])
+	if not brain.get_stimulus(&"ball_thrown").is_empty():
+		lines.append("saw a throw %.1f min ago" % brain.stimulus_age(&"ball_thrown"))
 	return "\n".join(lines)
 
 

@@ -197,6 +197,9 @@ func detach(velocity: Vector3 = Vector3.ZERO) -> void:
 	if physics_body != null:
 		physics_body.freeze = false
 		physics_body.linear_velocity = velocity
+		# A body that was asleep (or whose sleep timer ran on while frozen) would hang in
+		# the air.
+		physics_body.sleeping = false
 
 
 ## True if a player hand (group "player_hands") is holding it.
@@ -269,6 +272,7 @@ func from_dict(data: Dictionary) -> void:
 		get_root().global_position = Vector3(float(p[0]), float(p[1]), float(p[2]))
 		if physics_body != null:
 			physics_body.linear_velocity = Vector3.ZERO
+			physics_body.sleeping = false
 
 
 func _update_fill_visual() -> void:
