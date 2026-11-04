@@ -4,9 +4,10 @@
 # exits non-zero on any ERROR/WARNING line, test failure or baseline change. Logs go to
 # $LOG_DIR.
 #   tools/verify.sh            # all four
-#   tools/verify.sh soak       # one or more of: import test soak pack pack30
+#   tools/verify.sh soak       # one or more of: import test soak pack pack30 hands
 # pack30 (30 dogs, 2 bowl pairs, about 45 s) is not in the default run; it checks errors
-# and prints needs and frame time.
+# and prints needs and frame time. hands (12 dogs with the --autohands simulated owner)
+# isn't either; it checks errors and prints needs and what the owner did.
 #
 # A baseline change fails the run. If the change is intended (new tuning), update the
 # baseline below and in docs/m2_pack.md, and say why in the commit.
@@ -88,6 +89,14 @@ for step in $STEPS; do
 			check_log pack30 "$LOG_DIR/pack30.log"
 			grep -A4 "^Behavior choices" "$LOG_DIR/pack30.log" | sed 's/^/[pack30] /' \
 				|| { echo "[pack30] no summary"; FAIL=1; }
+			;;
+		hands)
+			$T $G --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 \
+				--quit-after-hours=48 --autofeed --autohands --seed=42 --dogs=12 \
+				> "$LOG_DIR/hands.log" 2>&1 || FAIL=1
+			check_log hands "$LOG_DIR/hands.log"
+			grep -A5 "^Behavior choices" "$LOG_DIR/hands.log" | sed 's/^/[hands] /' \
+				|| { echo "[hands] no summary"; FAIL=1; }
 			;;
 		*)
 			echo "unknown step: $step"

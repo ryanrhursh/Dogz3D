@@ -12,6 +12,8 @@ extends Node3D
 ##   --quit-after-hours=N  quit after N game hours and print a summary
 ##   --autofeed            refill bowls when empty (an attentive owner)
 ##   --autopet             pet any dog whose affection drops below 40
+##   --autohands           a simulated owner using the hand (strokes, hand-feeding, ball
+##                         throws) via the HandTool code API; separate from --autopet
 ##   --seed=N              fixed personality and decision RNG (dog i gets N + i * 7919)
 ##   --dogs=N              start with N dogs (default 1)
 ##   --bowls=N             N food and N water bowls (default 1, max 4), for big-pack soaks
@@ -43,6 +45,8 @@ var _start_minutes := 0.0
 var _log_decisions := false
 var _autofeed := false
 var _autopet := false
+## The simulated owner for --autohands, null otherwise.
+var _auto_hands: AutoHands
 var _refills := 0
 var _pets := 0
 var _lowest_seen: Dictionary = {}
@@ -80,6 +84,12 @@ func _ready() -> void:
 	_log_decisions = args.has("log")
 	_autofeed = args.has("autofeed")
 	_autopet = args.has("autopet")
+	if args.has("autohands"):
+		_auto_hands = AutoHands.new()
+		_auto_hands.name = "AutoHands"
+		add_child(_auto_hands)
+		_auto_hands.setup(hand_tool, pack, food_bowl, treat_jar,
+				get_node_or_null("Items/Ball/Item") as WorldItem, seed_value)
 	_start_minutes = SimClock.total_minutes
 
 	for need: StringName in DogNeeds.BASE_DECAY_PER_HOUR:
@@ -371,6 +381,8 @@ func _print_summary() -> void:
 	print("Lowest seen:  %s" % ", ".join(low_line))
 	print("Bowl refills: %d   Pets: %d   Bond: %.1f   Mood: %+.2f" % [
 			_refills, _pets, bond_sum / n, mood_sum / n])
+	if _auto_hands != null:
+		print(_auto_hands.summary())
 	_print_frame_time()
 
 

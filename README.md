@@ -1,9 +1,10 @@
 # Dogz 3D (working title)
 
 A cozy dog sanctuary town builder (see `docs/design.md`, roadmap in `docs/roadmap.md`).
-Current build: the milestone 1 gray box, with a capsule-shaped corgi that has needs, a
-personality and a utility-AI brain, living in a one-room diorama with a day/night cycle.
-The pack (many dogs), the hand tool and the town economy are in progress.
+Current build: the gray box, a pack of capsule-shaped corgis with needs, personalities,
+relationships and utility-AI brains, living in a one-room diorama with a day/night cycle.
+Click a dog twice for close-up mode, where your hand pets, hand-feeds and throws a ball.
+The town economy is next.
 
 Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the editor and press F5.
 
@@ -44,7 +45,7 @@ dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
 items/          WorldItem + bowl, bed, treat jar and ball scenes, FoodPiece (kibble, treat);
                 the AI reads affordance tags only
-interaction/    Milestone 3: HandTool (close-up hand cursor) and TouchZone
+interaction/    Milestone 3: HandTool (close-up hand cursor), TouchZone, AutoHands (soak owner)
 tests/          Headless test runner and suites (--test=all)
 tools/          godot.sh (fetch + run Godot 4.6.1 on Linux), verify.sh (import + tests + soak)
 docs/           Milestone plans
@@ -78,6 +79,11 @@ godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --q
 Reference result (seed 42, 48 h, attentive owner): idle 85, wander 22, chase_toy 11, drink 10,
 eat 10, sleep 7; no need fell below 47 except affection (33). With no owner, hunger and thirst
 hit 0 by day 2.
+
+Swap `--autopet` for `--autohands` to have a simulated owner use the hand instead: it
+strokes lonely dogs (learning their favorite spots), holds food out to hungry ones and throws
+the ball for bored ones, and the summary adds a `Hands:` line. `tools/verify.sh hands` runs
+it with 12 dogs.
 
 All args are documented at the top of `scenes/main.gd`.
 

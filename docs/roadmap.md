@@ -6,8 +6,8 @@ Each milestone is split into small steps. `tools/verify.sh` must pass after ever
 | # | Milestone | Status | Plan |
 |---|---|---|---|
 | 1 | Gray box: needs, utility AI, one dog, room, day/night, save | DONE | README.md |
-| 2 | **Pack**: many dogs, selection, shared items, dog-to-dog behaviors | IN PROGRESS | `docs/m2_pack.md` |
-| 3 | **Hands** (close-up mode): petting zones, hand-feeding, ball and chase | Step 1 done (plumbing) | `docs/m3_hands.md` |
+| 2 | **Pack**: many dogs, selection, shared items, dog-to-dog behaviors | DONE | `docs/m2_pack.md` |
+| 3 | **Hands** (close-up mode): petting zones, hand-feeding, ball and chase | Steps 1–5 done; windowed check on Windows left | `docs/m3_hands.md` |
 | 4 | **Estate and economy**: outdoor plot, build mode, resources ledger, supplies, visitors v0, save v3 | Planned | written when M3 lands |
 | 5 | **Growth**: XP, levels, data-driven skill trees, training (cue, reward window) | Planned | |
 | 6 | **Quests**: personal quests, expeditions, town contracts, quest log | Planned | |

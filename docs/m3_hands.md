@@ -19,8 +19,10 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
       `Dog.feed_from_hand()` -> `DogBrain.on_hand_fed()`, `come_for_food` behavior, tests.
 - [x] 4. Ball: `items/ball.tscn`, item bounds, throw from hand, `chase_toy` behavior, tests,
       record new soak baseline (the idle ball will shift wander/idle counts).
-- [ ] 5. `--autohands` soak flag (simulated owner via HandTool API), README controls,
-      `interaction/README.md`, DEVELOPMENT.md Status. Then do a windowed check on Windows.
+- [x] 5. `--autohands` soak flag (simulated owner via HandTool API), README controls,
+      `interaction/README.md`, DEVELOPMENT.md Status.
+- [ ] Windowed check on Windows (by hand: feel of petting, feeding, throwing; see the
+      known open questions below). Then M3 is done.
 
 ## What already exists (step 1)
 
@@ -190,6 +192,44 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
 - **Physics**: the ball never sleeps (`can_sleep` off): Godot's sleep timer kept running
   while it was frozen in the hand, so a slow drop hung in the air. One body, negligible cost.
 - pack30 counts shifted again (chaotic, not baseline-checked); no errors, needs sane.
+
+## What step 5 added
+
+- `AutoHands` (`interaction/auto_hands.gd`), created by `main.gd` for `--autohands`: a
+  simulated owner that only uses the HandTool code API. Every 15 game minutes between
+  07:00 and 22:00 it does one thing, starting each turn with the next kind in rotation
+  (feed, pet, throw) and falling through to the others when nobody needs it:
+  - feed: the awake dog with the lowest hunger below 85; `pick_from` the bowl (a treat
+    from the jar 25% of the time), `carry_to` 1.2 m from the dog toward the room's centre,
+    then each frame lets go (`release_at`) once the dog's mouth is within 0.45 m of the
+    hand, or after 6 game min takes it to the dog's mouth. A dog that fell asleep gets it
+    dropped.
+  - pet: the awake dog with the lowest affection below 60; `stroke(dog, zone, 3)`. It
+    learns per dog: a zone it liked, else one not tried yet, else one it didn't mind.
+  - throw: the awake dog with the lowest fun below 90 and energy >= 50; `pick_from` the
+    loose ball, `carry_to` 0.7 m beside the dog, `throw_item` away from it at 3-5 m/s plus
+    1.2 up.
+  Own RNG (`hash([seed, "autohands"])`), so seeded runs repeat. The soak summary adds a
+  `Hands:` line (strokes, kibble, treats, dropped, throws).
+- `tools/verify.sh hands`: 12 dogs, `--autofeed --autohands`, 48 h; checks ERROR/WARNING
+  and prints needs and the Hands line. Not in the default run and not baseline-checked.
+- Tests: `tests/test_autohands.gd` (4).
+
+## Decisions (step 5)
+
+- **Separate from `--autopet`**: E, `Dog.pet()` and `--autopet` are unchanged, and the
+  default verify runs use neither the hand nor AutoHands, so the baselines stay as step 4
+  recorded them.
+- **Generous thresholds** (hunger 85, affection 60, fun 90): with `--autofeed` the dogs
+  are rarely really hungry or bored, and the point of the soak is to exercise every hand
+  path for hours. With the stricter first try (45/45/60) the owner only ever petted.
+- **Rotation**: in a 12-dog pack some dog is always lonely; without rotating which action
+  goes first, petting crowded out feeding and throwing.
+- Reference (seed 42, 48 h): one dog: strokes 9, kibble 10, treats 6, throws 4,
+  come_for_food 15, chase_toy 19, bond 43 (30 with `--autopet`). 12 dogs: strokes 126,
+  kibble 47, treats 16, throws 11, come_for_food 336 (a crowd comes each time), chase_toy
+  92. One owner can't keep 12 dogs' affection up the way `--autopet` does (lowest 17,
+  average 27); fine, it's a coverage soak, not a care model.
 
 ## Design (approved)
 

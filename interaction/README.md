@@ -22,4 +22,9 @@ Milestone 3, the player's hand in close-up mode. See `docs/m3_hands.md` for the 
   `pick_from(item)`, `carry_to(point)`, `release_at(point)`, `throw_item(velocity)`,
   `hand_velocity()`, `add_hand_sample(point, at)`, static `throw_from_hand(v)`.
 
+- `auto_hands.gd`: `AutoHands`, the simulated owner for `--autohands` soaks. Every 15
+  game minutes (07:00 to 22:00) it feeds, strokes or throws for the dog that needs it most,
+  through the code API above only, rotating which comes first. See `docs/m3_hands.md`
+  step 5.
+
 E still pets the selected dog the old way (`Dog.pet()`), kept for `--autopet` soaks.
