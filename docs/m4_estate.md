@@ -12,7 +12,7 @@ has a recommended default. Steps that depend on one say so and wait for it.
 
 ## Steps (`tools/verify.sh` after each, then commit)
 
-- [ ] 1. Ledger and save v4: `Ledger` autoload (accounts, add/spend, atomic costs, day
+- [x] 1. Ledger and save v4: `Ledger` autoload (accounts, add/spend, atomic costs, day
       tallies, recent history, signal), `SAVE_VERSION` 4 with a v3 -> v4 migration, F3
       overlay ECONOMY line, `tests/test_ledger.gd`. Nothing earns or spends yet, so both
       soak baselines stay exact. Needs no open decision.
@@ -69,6 +69,36 @@ has a recommended default. Steps that depend on one say so and wait for it.
   `memory.bond` 0..100 per dog.
 - Keys in use: 1-4, Space, Esc, Tab, E, N, F, G, C, I, F3, F5, F8, F9. B, R, X, Delete,
   P and K are free.
+
+## What step 1 added
+
+- `Ledger` (`sim/ledger.gd`, autoload after SaveManager): `accounts` (StringName ->
+  float), `balance(account)`, `add(account, amount, reason)`, `spend(...) -> bool`,
+  `can_afford(costs)`, `pay(costs, reason) -> bool` (all or nothing), `tally(account,
+  &"today"|&"yesterday")` (reason -> net change), `history` (last 50: minute, account,
+  delta, balance, reason; not saved), `reset(start)`, `to_dict/from_dict`. Signals
+  `changed(account, balance, delta, reason)` and `reloaded`. Day tallies roll on
+  `SimClock.day_changed`. `EPSILON` (1e-6) so ten 0.1 handfuls buy a full bowl.
+- Save v4: `SAVE_VERSION` 4, a `"ledger"` section, loaded after the items. `migrate` from
+  v3 adds an empty ledger.
+- F3 overlay: once the ledger has accounts, a second line under ITEMS shows each balance
+  and today's net change.
+- Tests: `tests/test_ledger.gd` (10).
+
+## Decisions (step 1)
+
+- **Floats with a reason on every change.** One account type for everything (coins are
+  whole in practice, kibble is in bowl fills); reasons are StringNames so the day summary
+  can group them. `add` and `spend` refuse negative amounts (push_error) so a sign slip
+  can't hide as income.
+- **No starting balances yet**: a fresh game and a migrated v3 save both start with no
+  accounts. Q1 sets the new-game balances; they go in through `reset(start)` (not
+  income), never through the migration.
+- **History isn't saved**: it's for the HUD's recent-changes list; the day tallies are
+  saved, so the day summary survives a reload.
+- **No ESTATE section in the overlay**: at 1600 x 900 the overlay already reaches the
+  help line, so the balances share the ITEMS label and only show once accounts exist.
+- Both baselines, pack30 and `hands` unchanged (nothing earns or spends yet).
 
 ## Design
 

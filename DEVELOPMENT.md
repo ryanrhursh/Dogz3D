@@ -15,14 +15,15 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
 - NEXT: the M3 windowed check on Windows; the owner decisions in `docs/m4_estate.md`
-  ("Decisions for the owner", Q1-Q9), then M4 from step 1.
+  ("Decisions for the owner", Q1-Q9), then M4 step 2 (outdoor plot).
 - M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
   treat jar and come_for_food; the ball, item bounds, throwing and chase_toy; the
   `--autohands` simulated owner), plus the wrap-up (dogs skip food they can't reach; a
   ball out of reach comes back after 30 game minutes). Left: a windowed check on
   Windows. See `docs/m3_hands.md`.
-- M4 Estate and economy: planned in `docs/m4_estate.md` (7 steps plus a windowed check).
+- M4 Estate and economy: step 1 of 7 done (the `Ledger` autoload and save v4). See
+  `docs/m4_estate.md`; steps 2-7 wait for the owner decisions there.
 - M5–M10 (growth/skill trees, quests, staff, art, content, scale-up): see the roadmap.
 
 ## Workflow
@@ -62,7 +63,10 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
   a re-evaluation next tick (no min_duration, no eval budget).
 - Content is data (BreedData, and later SkillTree, BuildingData, QuestData Resources), so
   new breeds, species, skills and buildings don't need code changes where possible.
-- Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes.
+- Save data is JSON via SaveManager. Bump `SAVE_VERSION` when the format changes (at most
+  once per milestone: later steps add optional sections that default when missing).
+- The estate's resources live in the `Ledger` autoload (`sim/ledger.gd`); every change
+  goes through `add`/`spend`/`pay` with a reason. Brains never read it.
 
 ## GDScript conventions (pitfalls hit before)
 

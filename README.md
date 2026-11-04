@@ -36,7 +36,7 @@ Change `SimClock.minutes_per_real_second` to tune it.
 ## Layout
 
 ```
-sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
+sim/            SimClock, SaveManager and Ledger (autoloads), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
                 wait_turn, enjoy_pets, duck_away, come_for_food, chase_toy

@@ -111,6 +111,8 @@ func _refresh_view() -> void:
 				busy = " (in use)"
 			item_lines.append("%s %.0f%%%s" % [item.display_name, item.fill * 100.0, busy])
 	_items.text = "   ".join(item_lines)
+	if not Ledger.accounts.is_empty():
+		_items.text += "\n" + _estate_text()
 
 	var p := brain.personality
 	_traits.text = "energy %.2f  social %.2f  bold %.2f  food %.2f\ntoy %.2f  stubborn %.2f  trainable %.2f" % [
@@ -126,6 +128,24 @@ func _refresh_view() -> void:
 		if lines.size() >= 8:
 			break
 	_log.text = "\n".join(lines)
+
+
+## The ledger's balances, each with today's net change (shown under ITEMS once the
+## estate has accounts; the overlay has no room for a section of its own).
+func _estate_text() -> String:
+	var parts := PackedStringArray()
+	var names := PackedStringArray()
+	for key: StringName in Ledger.accounts:
+		names.append(String(key))
+	names.sort()
+	for account_name in names:
+		var account := StringName(account_name)
+		var net := 0.0
+		var by_reason := Ledger.tally(account)
+		for reason: StringName in by_reason:
+			net += float(by_reason[reason])
+		parts.append("%s %.1f (%+.1f today)" % [account, Ledger.balance(account), net])
+	return "   ".join(parts)
 
 
 ## Hand state and hovered zone, the dog's true touch prefs (effective at its bond, raw
