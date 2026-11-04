@@ -9,6 +9,7 @@ const SUITES := {
 	"social": "res://tests/test_social.gd",
 	"petting": "res://tests/test_petting.gd",
 	"feeding": "res://tests/test_feeding.gd",
+	"ball": "res://tests/test_ball.gd",
 }
 
 var passed := 0

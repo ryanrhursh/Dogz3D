@@ -20,6 +20,7 @@ Built and tested on **Godot 4.6.1** (Forward+). Open `project.godot` in the edit
 | Esc | Leave close-up mode |
 | Close-up: LMB press / drag on the dog | Pat / stroke (head, ears, back, belly; each dog has favorite spots) |
 | Close-up: hold LMB on the food bowl / treat jar | Take kibble / a treat; let go at a dog's head to hand-feed it, anywhere else to drop it |
+| Close-up: hold LMB on the ball (floor or a dog's mouth) | Grab it; flick the mouse and let go to throw (dogs chase it), let go slowly to drop it |
 | I | Toggle the dog card (the selected dog's mood, needs, traits, bond, best friend) |
 | N | Adopt another dog (debug) |
 | E | Pet the selected dog (debug fallback, kept for the `--autopet` soak) |
@@ -37,11 +38,11 @@ Change `SimClock.minutes_per_real_second` to tune it.
 sim/            SimClock (autoload), SaveManager (autoload), day_night.gd
 dog/brain/      Plain scripts, no nodes: needs, personality, memory, planner, brain
 dog/brain/behaviors/  wander, consume (eat + drink), sleep, idle, greet, play_together,
-                wait_turn, enjoy_pets, duck_away, come_for_food
+                wait_turn, enjoy_pets, duck_away, come_for_food, chase_toy
 dog/body/       Dog CharacterBody3D: movement, poses, placeholder visual, body API
 dog/pack.gd     Pack: spawns dogs (unique id, name, seed), selection, save sync
 dog/breeds/     BreedData resources (corgi.tres)
-items/          WorldItem + bowl, bed and treat jar scenes, FoodPiece (kibble, treat);
+items/          WorldItem + bowl, bed, treat jar and ball scenes, FoodPiece (kibble, treat);
                 the AI reads affordance tags only
 interaction/    Milestone 3: HandTool (close-up hand cursor) and TouchZone
 tests/          Headless test runner and suites (--test=all)
@@ -74,8 +75,9 @@ Runs days of game time in seconds and prints a summary:
 godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log
 ```
 
-Reference result (seed 42, 48 h, attentive owner): idle 90, wander 24, drink 11, eat 9, sleep 5;
-no need fell below 47 except affection (32). With no owner, hunger and thirst hit 0 by day 2.
+Reference result (seed 42, 48 h, attentive owner): idle 85, wander 22, chase_toy 11, drink 10,
+eat 10, sleep 7; no need fell below 47 except affection (33). With no owner, hunger and thirst
+hit 0 by day 2.
 
 All args are documented at the top of `scenes/main.gd`.
 

@@ -17,7 +17,7 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
       stimulus + forced re-eval, `enjoy_pets` and `duck_away` behaviors, overlay HANDS section, tests.
 - [x] 3. Hand feeding: kibble (from bowl) and treat (from new treat jar) pieces,
       `Dog.feed_from_hand()` -> `DogBrain.on_hand_fed()`, `come_for_food` behavior, tests.
-- [ ] 4. Ball: `items/ball.tscn`, item bounds, throw from hand, `chase_toy` behavior, tests,
+- [x] 4. Ball: `items/ball.tscn`, item bounds, throw from hand, `chase_toy` behavior, tests,
       record new soak baseline (the idle ball will shift wander/idle counts).
 - [ ] 5. `--autohands` soak flag (simulated owner via HandTool API), README controls,
       `interaction/README.md`, DEVELOPMENT.md Status. Then do a windowed check on Windows.
@@ -132,6 +132,64 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
 - **pack30** (not baseline-checked) is chaotic with respect to physics scene contents:
   the new Area3D pick colliders shift its counts slightly. The 1- and 12-dog baselines are
   unchanged.
+
+## What step 4 added
+
+- `items/ball.tscn`: RigidBody3D root (layer 4 = value 8, mask world|dogs|item_bounds = 19,
+  mass 0.06, bounce 0.55, friction 0.8, linear damp 0.4, angular damp 2, continuous CD,
+  freeze mode kinematic, `can_sleep` off) with child `Item` = `Ball` (`items/ball.gd`,
+  extends WorldItem: affordances `toy`, `throwable`, `movable`, approach radius 0.5,
+  `physics_body` = root). Below y -2 it comes back at `respawn_point` (its start). One sits
+  in main.tscn at (1.6, 0.06, 2.4), saved as `Items/Ball/Item`.
+- Item bounds: `ItemBounds/South` and `ItemBounds/East` in main.tscn, 2.5 m tall, 0.4 m
+  thick StaticBody3Ds on layer 5 (16) over the low south and east walls. Outside the
+  navmesh region (and its bake mask is 1 anyway); dogs (mask 1) walk through them.
+- HandTool: `pick_from` takes the ball from a dog's mouth too (`Dog.drop_held` first);
+  hover highlights it there. While carrying it records hand points (`add_hand_sample`,
+  `hand_velocity()` over the last 0.1 real s). Mouse release: `throw_from_hand(v)` (flat
+  speed >= 1.2 m/s, vertical part capped at 2 m/s, lift 0.3 x flat speed) then
+  `throw_item(v)`, else `release_at`. `throw_item(velocity) -> bool` caps at 7 m/s,
+  detaches with that velocity and has awake dogs within 10 m `notice(&"ball_thrown")`.
+  The hand ray excludes the carried ball. Physics items dropped from the hand fall from
+  the hand instead of being placed on the floor. Food notices only fire for food.
+- `WorldItem.detach` wakes the body (`sleeping = false`). `Dog.drop_held` pulls a dropped
+  physics item back out of a wall the mouth pokes into. `Dog.find_nearest_item(aff,
+  ignore_claims)`: a thrown ball is anyone's.
+- `chase_toy` (`dog/brain/behaviors/chase_toy.gd`, registered last, label "Play ball").
+  Overlay HANDS shows "saw a throw N min ago"; HELP_TEXT and the close-up hint (now two
+  lines, clear of the overlay) mention the ball.
+- Tests: `tests/test_ball.gd` (11). `TestSuite.before_each` parks the ball on the table
+  (`park_ball()`, out of reach) so other suites run as before; `get_ball()` finds it.
+
+## Decisions (step 4)
+
+- **chase_toy score.** Lying about: (0.08 + 0.6 x fun urgency) x lerp(0.6, 1.3, toy_drive)
+  x energy gate ((energy - 25) / 30, clamped), only with fun urgency >= 0.05, 60 game min
+  after its last game, and if the ball is reachable (cached by ball position). A fresh
+  throw (stimulus < 2 game min, re-stamped on reaction) adds 0.45 x lerp(0.8, 1.2,
+  toy_drive) x gate and skips the fun, gap and reach checks. Cap 0.85 (never interrupts
+  eat/sleep). 0.5 while running; stops below 20 energy. Early-outs (sleeping, gate,
+  stimuli/fun/gap) come before the item scan.
+- **One throw, one chase**: a dog remembers the throw it went after, so it doesn't
+  re-chase the ball it just dropped while the throw is still fresh.
+- **A ball lying about is one dog's game** (it claims the ball, `max_users` 1); **a thrown
+  ball is a race** (no claim). Near the ball (1.4 m) a dog that sees another chaser nearer
+  (tie: smaller dog_id) stops and watches (WATCH); when someone grabs it, the others end
+  their game as done, not failed. This stops the pile-up at the ball.
+- **States**: CHASE (run, re-path when the ball has rolled 0.3 m from the aim) -> grab
+  when the mouth is within 0.3 m flat of a ball that is down (y <= 0.45), or when stopped
+  within 0.8 m -> PLAY (walk 1-3 legs of 1-3 m with it, max 8 min) -> DROP (toss 1 m/s
+  forward, 0.6 up) -> done. RETURN is a stub for M5 fetch (`fetch` flag, goes to DROP).
+  Fails with a 20 min cooldown if a resting ball can't be reached (not while it's still
+  moving faster than 0.3 m/s), if stuck, or after 6 min of chasing. Fun +1.5/min, energy
+  -0.3/min. The hand taking the ball ends the game as done.
+- **Baselines moved once, on purpose**: the idle ball makes chase_toy score without hand
+  input. One dog: idle 85, wander 22, chase_toy 11, drink 10, eat 10, sleep 7 (lowest
+  fun went up from 47 to 59). 12 dogs: chase_toy 23 of about 1750 choices (one ball, one
+  dog at a time). Stable over repeated runs.
+- **Physics**: the ball never sleeps (`can_sleep` off): Godot's sleep timer kept running
+  while it was frozen in the hand, so a slow drop hung in the air. One body, negligible cost.
+- pack30 counts shifted again (chaotic, not baseline-checked); no errors, needs sane.
 
 ## Design (approved)
 

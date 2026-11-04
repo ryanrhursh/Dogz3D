@@ -20,6 +20,7 @@ const WaitTurnBehavior := preload("res://dog/brain/behaviors/wait_turn.gd")
 const EnjoyPetsBehavior := preload("res://dog/brain/behaviors/enjoy_pets.gd")
 const DuckAwayBehavior := preload("res://dog/brain/behaviors/duck_away.gd")
 const ComeForFoodBehavior := preload("res://dog/brain/behaviors/come_for_food.gd")
+const ChaseToyBehavior := preload("res://dog/brain/behaviors/chase_toy.gd")
 
 ## Affinity and affection a dog gains when another dog greets it nicely.
 const GREETED_AFFINITY := 0.05
@@ -112,6 +113,8 @@ func setup(p_personality: DogPersonality, seed_value: int,
 		EnjoyPetsBehavior.new(),
 		DuckAwayBehavior.new(),
 		ComeForFoodBehavior.new(),
+		# The one hand behavior that scores without the hand: a ball lying about.
+		ChaseToyBehavior.new(),
 	]
 	planner.behaviors = list
 

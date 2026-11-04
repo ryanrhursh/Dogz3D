@@ -106,9 +106,13 @@ it. Dogs share bowls and beds without piling up, and they notice each other.
   also set so the navmesh sync can't land on a different frame; it alone did not fix it.
 - Exact baselines (Godot 4.6.1 Linux headless, seed 42, 48 h), checked by `tools/verify.sh`
   (it fails with BASELINE CHANGED; update both there and here when a change is intended):
-  - One dog: idle 90, wander 24, drink 11, eat 9, sleep 5 (unchanged since M1).
-  - 12 dogs: idle 656, play_together 266, greet 242, wander 174, wait_turn 106, sleep 97,
-    eat 57, drink 48. Lowest thirst 37, lowest hunger 47.
+  - One dog: idle 85, wander 22, chase_toy 11, drink 10, eat 10, sleep 7 (since M3 Hands
+    step 4, the ball; before it, unchanged since M1: idle 90, wander 24, drink 11, eat 9,
+    sleep 5).
+  - 12 dogs: idle 720, play_together 263, greet 243, wander 177, wait_turn 103, sleep 98,
+    eat 59, drink 59, chase_toy 23. Lowest thirst 44, lowest hunger 48. (Before the ball:
+    idle 656, play_together 266, greet 242, wander 174, wait_turn 106, sleep 97, eat 57,
+    drink 48.)
 - Frame time (wall clock, this 4-core cloud container; `Frame time:` line in every soak
   summary, not part of the baseline):
 

@@ -85,7 +85,8 @@ func _bond_scale() -> float:
 
 func test_come_for_food_quiet() -> void:
 	var behaviors := dog.brain.planner.behaviors
-	check(behaviors[behaviors.size() - 1].id == &"come_for_food", "come_for_food is registered last")
+	check(behaviors[behaviors.size() - 2].id == &"come_for_food",
+			"come_for_food is registered after the other hand behaviors, before chase_toy")
 	SimClock.paused = true
 	var state_before := dog.brain.rng.state
 	check(not WorldItem.any_held_by_player(), "the hand holds nothing")

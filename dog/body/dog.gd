@@ -19,6 +19,8 @@ extends CharacterBody3D
 const MAX_REACH_HEIGHT := 0.45
 ## How far off the navmesh an item may be and still be reachable.
 const REACH_SLACK := 0.45
+## A ball dropped with the mouth in a wall goes this far out from the wall's face.
+const DROP_WALL_GAP := 0.08
 ## Moving dogs steer away from other dogs closer than this (flat metres).
 const SEPARATION_RADIUS := 0.65
 const SEPARATION_WEIGHT := 1.2
@@ -195,14 +197,15 @@ func set_gait(new_gait: StringName) -> void:
 
 
 ## Nearest available item with the affordance that nobody is carrying and that has a
-## free slot for this dog (other dogs' claims count).
-func find_nearest_item(affordance: StringName) -> WorldItem:
+## free slot for this dog (other dogs' claims count, unless `ignore_claims`: a thrown
+## ball is anyone's).
+func find_nearest_item(affordance: StringName, ignore_claims: bool = false) -> WorldItem:
 	var best: WorldItem = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("items"):
 		var item := node as WorldItem
 		if item == null or item.held or not item.has_affordance(affordance) \
-				or not item.is_available() or not item.is_free_for(self):
+				or not item.is_available() or not (ignore_claims or item.is_free_for(self)):
 			continue
 		var d := global_position.distance_squared_to(item.global_position)
 		if d < best_dist:
@@ -543,7 +546,24 @@ func drop_held(velocity: Vector3 = Vector3.ZERO) -> void:
 		return
 	if is_instance_valid(held_item) and held_item.holder == _mouth:
 		held_item.detach(velocity)
+		if held_item.physics_body != null:
+			_pull_out_of_walls(held_item)
 	held_item = null
+
+
+## The mouth sticks out ahead of the body and can be inside a wall when the dog stands
+## facing one. A dropped ball goes back to the near side of the wall, so physics doesn't
+## shove it out the far side.
+func _pull_out_of_walls(item: WorldItem) -> void:
+	var mouth := _mouth.global_position
+	var from := Vector3(global_position.x, mouth.y, global_position.z)
+	var query := PhysicsRayQueryParameters3D.create(from, mouth, 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var normal: Vector3 = hit["normal"]
+	var point: Vector3 = hit["position"]
+	item.get_root().global_position = point + normal * DROP_WALL_GAP
 
 
 ## The point the mouth is at, for behaviors lining up with items.
