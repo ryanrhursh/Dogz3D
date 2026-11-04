@@ -21,6 +21,8 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
       record new soak baseline (the idle ball will shift wander/idle counts).
 - [x] 5. `--autohands` soak flag (simulated owner via HandTool API), README controls,
       `interaction/README.md`, DEVELOPMENT.md Status.
+- [x] Wrap-up: dogs skip food they can't reach; a ball out of every dog's reach comes
+      back after 30 game minutes (new one-dog baseline). See "Decisions (wrap-up)".
 - [ ] Windowed check on Windows (by hand: feel of petting, feeding, throwing; see the
       known open questions below). Then M3 is done.
 
@@ -231,6 +233,27 @@ Read this when working on M3. Tick steps off here and in DEVELOPMENT.md Status a
   92. One owner can't keep 12 dogs' affection up the way `--autopet` does (lowest 17,
   average 27); fine, it's a coverage soak, not a care model.
 
+## Decisions (wrap-up)
+
+- **Food out of reach is skipped**: `Dog.find_nearest_item(aff, ignore_claims,
+  reachable_only)`; with `reachable_only` it skips movable items the dog can't reach
+  (`can_reach`). Eat and drink (`consume.gd`) use it in score and enter, so kibble dropped
+  on the table top is ignored and the dog goes to the bowl instead. Only movable items
+  pay for the check (fixed bowls are always reachable; the table top fails the height
+  test before any navmesh query), so the soaks, which never drop food, didn't move.
+- **A ball out of reach comes back** (in `Ball`, not a behavior): once per game minute a
+  resting ball (slower than 0.3 m/s, not held) checks the `can_reach` rule (height <=
+  0.45, within 0.45 m flat of the navmesh); after `unreachable_return_minutes` (30) of
+  that in a row it respawns at `respawn_point`. Long enough that the player sees where it
+  went and can fetch it by hand; short enough that the dogs don't lose their toy for the
+  day. `park_ball()` in the tests turns it off (INF), so the parked ball stays put.
+- **Baseline moved once, on purpose**: in the one-dog soak the ball got wedged on day 2
+  in the gap between the couch's east end and the north wall, (-1.44, 0.06, -3.85), and
+  lay there for the rest of the run. Now it comes back at D2 17:15 and the dog plays three
+  more games. One dog: idle 83, wander 20, chase_toy 14, drink 10, eat 10, sleep 7 (runs
+  identical up to that moment; stable over repeated runs). The 12-dog baseline is
+  unchanged (the ball never got stuck there).
+
 ## Design (approved)
 
 **Controls.** RMB stays camera orbit. LMB on a zone: press = pat, drag = strokes (one per 0.15 m
@@ -283,8 +306,9 @@ reaction. Update HELP_TEXT.
 - Belly zone is hard to reach from the default camera; a `belly_up` pose may be needed.
 - Dropped kibble and other spawned items are not saved (their scene paths don't exist on load).
   Since step 3 SaveManager skips `free_when_empty` items, so saves stay clean.
-- Food dropped on the table top is food a dog can't reach; eat walks there, gets stuck
-  and fails with its cooldown. Drop only onto reachable floor, or let dogs skip
-  unreachable food (`can_reach`), if it shows up in play.
+- ~~Food dropped on the table top is food a dog can't reach.~~ Closed in the wrap-up:
+  eat and drink skip movable items a dog can't reach.
+- ~~A ball resting where no dog can reach it.~~ Closed in the wrap-up: it comes back
+  after 30 game minutes out of reach.
 - Close-up only frames one dog; reaching the bowl or jar means zooming out (wheel) or
   orbiting. A treat pouch or a hotkey may feel better; check in the windowed test.

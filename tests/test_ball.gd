@@ -5,6 +5,8 @@ const TEST_SPEED := 4.0
 const ChaseToy := preload("res://dog/brain/behaviors/chase_toy.gd")
 ## Open floor for the ball, away from the dog's spot (0, 0.05, 1).
 const FLOOR_SPOT := Vector3(-1.2, 0.06, 1.0)
+## The gap between the couch's east end and the north wall: off the navmesh.
+const BEHIND_COUCH := Vector3(-1.44, 0.06, -3.85)
 
 var hand: HandTool
 var ball: Ball
@@ -207,6 +209,41 @@ func test_respawn() -> void:
 	await frames(5)
 	check(_flat(_ball_at(), ball.respawn_point) < 0.2 and _ball_at().y > -0.5,
 			"a ball that fell out comes back (%s)" % _ball_at())
+
+
+func test_unreachable_ball_comes_back() -> void:
+	_prep(dog, 40.0)
+	check(ball.unreachable_return_minutes == INF, "parked for the tests, the return is off")
+	ball.unreachable_return_minutes = 5.0
+	_place_ball(FLOOR_SPOT)
+	await frames(30)
+	check(ball.is_reachable(), "on open floor a dog can reach it")
+	for i in 8:
+		ball.advance_minutes(1.0)
+	check(_flat(_ball_at(), FLOOR_SPOT) < 0.3, "a reachable ball stays where it is")
+
+	dog.global_position = Vector3(3.0, 0.05, 2.0)
+	_place_ball(BEHIND_COUCH)
+	await frames(30)
+	check(not ball.is_reachable(), "behind the couch no dog can reach it (%s)" % _ball_at())
+	check(_behavior(dog, &"chase_toy").score(dog) == 0.0, "chase_toy ignores it there")
+	_place_ball(FLOOR_SPOT)
+	await frames(30)
+	check(_behavior(dog, &"chase_toy").score(dog) > 0.0, "but plays with it on the floor")
+	_place_ball(BEHIND_COUCH)
+	await frames(30)
+	for i in 3:
+		ball.advance_minutes(1.0)
+	check(_flat(_ball_at(), BEHIND_COUCH) < 0.3, "not back before its time")
+	ball.advance_minutes(0.5)
+	ball.advance_minutes(0.5)
+	check_near(ball.unreachable_minutes, 4.0, 0.001, "half minutes add up to whole checks")
+	# The last minute goes through the real clock (Ball._process).
+	SimClock.time_scale = 60.0
+	SimClock.paused = false
+	check(await wait_until(func() -> bool: return _flat(_ball_at(), ball.respawn_point) < 0.2, 3.0),
+			"after 5 game minutes out of reach it is back at its respawn point")
+	check(ball.unreachable_minutes == 0.0, "the count starts over")
 
 
 func test_dog_chases_thrown_ball() -> void:

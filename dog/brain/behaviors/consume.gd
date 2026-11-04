@@ -1,6 +1,7 @@
 extends DogBehavior
 ## Walk to an item with a given affordance and consume from it until the need is met.
-## One script drives both eat (food bowl) and drink (water bowl).
+## One script drives both eat (food bowl) and drink (water bowl). Food a dog can't reach
+## (a piece dropped on the table) is skipped.
 
 ## Need points gained per game minute of consuming.
 const SATISFY_PER_MINUTE := 6.0
@@ -36,7 +37,7 @@ func score(dog: Dog) -> float:
 	var u := dog.brain.needs.urgency(need)
 	if u < MIN_URGENCY:
 		return 0.0
-	if dog.find_nearest_item(affordance) == null:
+	if dog.find_nearest_item(affordance, false, true) == null:
 		return 0.0
 	var mod := 1.0
 	if drive_trait != &"":
@@ -46,7 +47,7 @@ func score(dog: Dog) -> float:
 
 func enter(dog: Dog) -> void:
 	_consumed_minutes = 0.0
-	_item = dog.find_nearest_item(affordance)
+	_item = dog.find_nearest_item(affordance, false, true)
 	if _item != null and not dog.claim_item(_item):
 		_item = null
 	if _item != null:

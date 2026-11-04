@@ -76,8 +76,8 @@ Runs days of game time in seconds and prints a summary:
 godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log
 ```
 
-Reference result (seed 42, 48 h, attentive owner): idle 85, wander 22, chase_toy 11, drink 10,
-eat 10, sleep 7; no need fell below 47 except affection (33). With no owner, hunger and thirst
+Reference result (seed 42, 48 h, attentive owner): idle 83, wander 20, chase_toy 14, drink 10,
+eat 10, sleep 7; no need fell below 47 except affection (32). With no owner, hunger and thirst
 hit 0 by day 2.
 
 Swap `--autopet` for `--autohands` to have a simulated owner use the hand instead: it

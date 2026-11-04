@@ -21,7 +21,7 @@ mkdir -p "$LOG_DIR"
 STEPS="${*:-import test soak pack}"
 FAIL=0
 # Behavior choice counts, name=count sorted by name (Godot 4.6.1 Linux headless, seed 42).
-SOAK_BASELINE="chase_toy=11 drink=10 eat=10 idle=85 sleep=7 wander=22"
+SOAK_BASELINE="chase_toy=14 drink=10 eat=10 idle=83 sleep=7 wander=20"
 PACK_BASELINE="chase_toy=23 drink=59 eat=59 greet=243 idle=720 play_together=263 sleep=98 wait_turn=103 wander=177"
 
 # "Behavior choices: { &"idle": 90, ... }" -> "idle=90 ..." sorted by name.

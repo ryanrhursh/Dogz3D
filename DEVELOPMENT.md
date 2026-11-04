@@ -18,8 +18,9 @@ Design: `docs/design.md`. Roadmap: `docs/roadmap.md`. Each milestone has a plan 
 - M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
   treat jar and come_for_food; the ball, item bounds, throwing and chase_toy; the
-  `--autohands` simulated owner). Left: a windowed check on Windows. See
-  `docs/m3_hands.md`.
+  `--autohands` simulated owner), plus the wrap-up (dogs skip food they can't reach; a
+  ball out of reach comes back after 30 game minutes). Left: a windowed check on
+  Windows. See `docs/m3_hands.md`.
 - M4–M10 (economy, growth/skill trees, quests, staff, art, content, scale-up): see the
   roadmap.
 
@@ -86,9 +87,9 @@ and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows
    Prints PASS/FAIL lines and exits 1 on failure. Suites live in `tests/`.
 3. Soak test, which runs 48 game hours in seconds and prints a summary:
    `GODOT --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log`
-   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 85, wander 22,
-   chase_toy 11, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; the room's
-   ball moved it in M3 Hands step 4). Add `--dogs=12` for the pack
+   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 83, wander 20,
+   chase_toy 14, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; the room's
+   ball moved it in M3 Hands step 4, and its return from out of reach in the M3 wrap-up). Add `--dogs=12` for the pack
    soak, also exact (baseline in `tools/verify.sh` and `docs/m2_pack.md`). `--bowls=N`
    adds bowl pairs for big packs. The summary ends with a wall-clock `Frame time:` line.
 4. Screenshot (needs a real renderer, not --headless):

@@ -198,8 +198,9 @@ func set_gait(new_gait: StringName) -> void:
 
 ## Nearest available item with the affordance that nobody is carrying and that has a
 ## free slot for this dog (other dogs' claims count, unless `ignore_claims`: a thrown
-## ball is anyone's).
-func find_nearest_item(affordance: StringName, ignore_claims: bool = false) -> WorldItem:
+## ball is anyone's). `reachable_only` skips movable items the dog can't get to.
+func find_nearest_item(affordance: StringName, ignore_claims: bool = false,
+		reachable_only: bool = false) -> WorldItem:
 	var best: WorldItem = null
 	var best_dist := INF
 	for node in get_tree().get_nodes_in_group("items"):
@@ -208,9 +209,14 @@ func find_nearest_item(affordance: StringName, ignore_claims: bool = false) -> W
 				or not item.is_available() or not (ignore_claims or item.is_free_for(self)):
 			continue
 		var d := global_position.distance_squared_to(item.global_position)
-		if d < best_dist:
-			best_dist = d
-			best = item
+		if d >= best_dist:
+			continue
+		# Fixed items (bowls) stand where dogs can get to them; only movable ones (a
+		# dropped piece on the table) need the navmesh check.
+		if reachable_only and item.movable and not can_reach(item.global_position):
+			continue
+		best_dist = d
+		best = item
 	return best
 
 
