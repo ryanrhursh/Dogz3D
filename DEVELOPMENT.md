@@ -16,7 +16,7 @@ progress at a glance: `TODO.md`. Each milestone has a plan doc in
   selection; dog to dog (separation, relationships, greet, play together, bed sharing);
   pack scale (30 dogs measured, staggered thinking, waiting in line at bowls, the dog card,
   deterministic pack soak).
-- NEXT: M4 step 2 (outdoor plot). The owner's open items (the M3 windowed check, proposed
+- NEXT: M4 step 3 (buildings core). The owner's open items (the M3 windowed check, proposed
   numbers to confirm) are in `TODO.md`.
 - M3 Hands (close-up mode): steps 1–5 of 5 done (plumbing and test harness; close-up
   mode, HandTool, petting with enjoy_pets and duck_away; hand feeding with kibble, the
@@ -24,7 +24,8 @@ progress at a glance: `TODO.md`. Each milestone has a plan doc in
   `--autohands` simulated owner), plus the wrap-up (dogs skip food they can't reach; a
   ball out of reach comes back after 30 game minutes). Left: a windowed check on
   Windows. See `docs/m3_hands.md`.
-- M4 Estate, economy and jobs v0: step 1 of 9 done (the `Ledger` autoload and save v4).
+- M4 Estate, economy and jobs v0: steps 1-2 of 9 done (the `Ledger` autoload and save
+  v4; the outdoor plot: yard, doorway, fence and gate).
   Owner decisions recorded. See `docs/m4_estate.md`.
 - M5–M10 (growth and skill trees, quests and neighbours, upkeep jobs, art, content,
   scale-up): see the roadmap.
@@ -127,7 +128,9 @@ Tests:
   1 s of physics). Wait `tree.process_frame` for process ticks. SimClock reflects a new
   `time_scale` only after two process frames. Use TEST_SPEED 4 for game-minute windows.
   Physics runs even while SimClock is paused; `SimClock.advance(m)` moves a paused clock.
-- Reset dog positions to open floor (0, 0.05, 1). Lambdas must capture WeakRefs, not
+- Reset dog positions to open floor (0, 0.05, 1). To walk a dog somewhere without its
+  brain picking another behavior, `dog.set_process(false)` (the brain ticks in
+  `Dog._process`; physics still moves it), then `go_to`, and turn it back on after. Lambdas must capture WeakRefs, not
   objects that may be freed.
 - "no summary" from the tests means a parse error the import step missed. Code no test
   reaches (UI, overlay) needs a screenshot run to catch runtime errors.
@@ -158,9 +161,9 @@ and SHA-checks Godot 4.6.1 on first use, then runs it with your args. On Windows
    Prints PASS/FAIL lines and exits 1 on failure. Suites live in `tests/`.
 3. Soak test, which runs 48 game hours in seconds and prints a summary:
    `GODOT --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log`
-   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 83, wander 20,
-   chase_toy 14, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; the room's
-   ball moved it in M3 Hands step 4, and its return from out of reach in the M3 wrap-up). Add `--dogs=12` for the pack
+   Expect zero ERROR or WARNING lines. Baseline (seed 42): idle 69, wander 18,
+   chase_toy 10, drink 10, eat 10, sleep 7 (exact on 4.6.1 Linux headless; last moved by
+   the outdoor plot in M4 step 2; history in `docs/m2_pack.md`). Add `--dogs=12` for the pack
    soak, also exact (baseline in `tools/verify.sh` and `docs/m2_pack.md`). `--bowls=N`
    adds bowl pairs for big packs. The summary ends with a wall-clock `Frame time:` line.
 4. Screenshot (needs a real renderer, not --headless):

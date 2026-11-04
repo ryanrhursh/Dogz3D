@@ -8,7 +8,7 @@ Each milestone is split into small steps. `tools/verify.sh` must pass after ever
 | 1 | Gray box: needs, utility AI, one dog, room, day/night, save | DONE | README.md |
 | 2 | **Pack**: many dogs, selection, shared items, dog-to-dog behaviors | DONE | `docs/m2_pack.md` |
 | 3 | **Hands** (close-up mode): petting zones, hand-feeding, ball and chase | Steps 1–5 done; windowed check on Windows left | `docs/m3_hands.md` |
-| 4 | **Estate, economy and jobs v0**: small outdoor plot, build mode, resources ledger, supplies, farming v0, jobs v0 (careers away from home, the garden workplace), save v4 | Step 1 of 9 done | `docs/m4_estate.md` |
+| 4 | **Estate, economy and jobs v0**: small outdoor plot, build mode, resources ledger, supplies, farming v0, jobs v0 (careers away from home, the garden workplace), save v4 | Steps 1–2 of 9 done | `docs/m4_estate.md` |
 | 5 | **Growth**: XP (from play, training and jobs), levels, data-driven skill trees that raise job performance, training (cue, reward window), plot expansions unlocked by level | Planned | |
 | 6 | **Quests and neighbours**: personal quests, a few named neighbours (human or other species) who trade and give quests, expeditions (foraging food), town contracts, quest log, expansions unlocked by quests | Planned | |
 | 7 | **Upkeep jobs**: caretaker and cleaner jobs, mess and cleaning, the kitchen (produce into treats and meals) | Planned | |

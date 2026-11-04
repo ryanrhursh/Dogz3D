@@ -18,7 +18,7 @@ defaults the owner can still change (they're listed in `TODO.md`).
 - [x] 1. Ledger and save v4: `Ledger` autoload (accounts, add/spend, atomic costs, day
       tallies, recent history, signal), `SAVE_VERSION` 4 with a v3 -> v4 migration, F3
       overlay balances, `tests/test_ledger.gd`. Both baselines unchanged.
-- [ ] 2. Outdoor plot: 16 x 14 m with the house in its north-west corner, an open 1.5 m
+- [x] 2. Outdoor plot: 16 x 14 m with the house in its north-west corner, an open 1.5 m
       doorway in the house's low south wall, grass, a fence with a gate, one navmesh over
       house and plot, item bounds reworked, camera bounds widened. Moves both baselines
       once, on purpose (dogs wander outside).
@@ -107,6 +107,43 @@ defaults the owner can still change (they're listed in `TODO.md`).
   help line, so the balances share the ITEMS label and only show once accounts exist.
 - Both baselines, pack30 and `hands` unchanged (nothing earns or spends yet).
 
+## What step 2 added
+
+- `scenes/main.tscn`, all under `Home` (the NavigationRegion3D, so one synchronous bake
+  covers house and yard): `WallSouth` split into `WallSouthWest` (x -5.2..-2.35) and
+  `WallSouthEast` (x -0.85..5.2), leaving the 1.5 m doorway at x -2.35..-0.85;
+  `YardSouth` (x -5.2..10.8, z 4.0..9.8) and `YardEast` (x 5.0..10.8, z -4.2..4.0), grass
+  boxes with their top at y 0 like the house floor; a 0.6 m fence (`FenceSouthWest`,
+  `FenceSouthEast`, `FenceEast`, `FenceNorth`, `FenceWest`) and a closed `Gate` (x
+  1.25..2.75 on the south fence, 0.7 m, darker), all on layer 1.
+- `ItemBounds`: `South`, `East`, `North`, `West`, 2.5 m tall, just outside the fence
+  (the old ones over the house's low walls are gone). `Meadow`: a 60 x 60 m plane at
+  y -0.03 round the plot, visual only (no collision; an escaped ball still falls and
+  respawns).
+- Pack spawn points, the bowls and `--bowls=N` pairs are unchanged (inside the house).
+  No camera change was needed (Live panning has no bounds).
+- Tests: `tests/test_plot.gd` (4: the yard is reachable and the walls and fence aren't,
+  the path out goes through the doorway, the fence and gate hold, a dog walks out);
+  `test_ball` checks the four bounds and that hard throws stay in the plot, reachable.
+
+## Decisions (step 2)
+
+- **Plot coordinates**: x -5.2..10.8, z -4.2..9.8, the house's tall north and west walls
+  as the plot's edges; the yard (about 140 m2) is an L round the south and east sides.
+- **Doorway west of the rug** (x -2.35..-0.85), clear of the bed, the table and the
+  spawn rows; 0.75 m of navmesh after the 0.375 agent radius on each side.
+- **The gate is closed** (solid, layer 1) until step 8 sends dogs to work through it.
+- **Baselines moved once, on purpose** (navmesh change): one dog idle 69, wander 18,
+  chase_toy 10, drink 10, eat 10, sleep 7 (the dog is outside about 12% of the time);
+  12 dogs idle 592, play_together 240, greet 231, wander 175, wait_turn 95, sleep 98,
+  eat 71, drink 49, chase_toy 21 (about 31% outside). Stable over repeated runs.
+- The ball's 30-minute return fired once in pack30 (the ball came to rest on top of the
+  low south wall next to the doorway), never in the other soaks. pack30 lowest thirst
+  went from 34 to 24 and hunger from 45 to 38 (longer walks to the two bowl pairs for 30
+  dogs); the 12-dog `hands` soak's lowest affection went from 17 to 6 (dogs spread over
+  the yard; one simulated owner can't reach them all). Both are coverage soaks; feeding
+  stations in the yard (step 3) should help.
+
 ## Decisions (owner)
 
 Answered by the owner:
@@ -158,7 +195,7 @@ migration, so an upgraded save isn't handed money.
 north and west walls are the plot's edges and the yard (about 140 m2) wraps the house's
 south and east sides. The doorway is a 1.5 m gap in the low south wall, always open.
 Grass ground, a fence on layer 1 round the yard (dogs and the ball stop at it), item
-bounds over low fence parts and the low house walls where the ball could leave the plot.
+bounds over the fence (the ball may fly over the low house walls: it lands in the yard).
 A gate in the south fence (the way to work for careers). One NavigationRegion3D over house
 and yard, still baked synchronously at startup. Camera Live bounds widened to the plot.
 Land beyond the fence is meadow, visibly fenced off: `BuildGrid` knows parcels (the

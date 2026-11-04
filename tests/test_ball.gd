@@ -94,7 +94,7 @@ func test_ball_setup() -> void:
 	check(ball.movable and not ball.consumable, "movable, not used up")
 	var behaviors := dog.brain.planner.behaviors
 	check(behaviors[behaviors.size() - 1].id == &"chase_toy", "chase_toy is registered last")
-	for wall_name: String in ["South", "East"]:
+	for wall_name: String in ["South", "East", "North", "West"]:
 		var wall := main.get_node("ItemBounds/%s" % wall_name) as StaticBody3D
 		check(wall != null and wall.collision_layer == 16, "%s item bound on layer 5" % wall_name)
 		check(not (wall.get_parent() is NavigationRegion3D), "%s bound is not under the navmesh" % wall_name)
@@ -187,11 +187,14 @@ func test_throw_moves_ball() -> void:
 			"throw speed is capped (%.2f)" % ball.physics_body.linear_velocity.length())
 
 
-func test_bounds_keep_ball_in_room() -> void:
+func test_bounds_keep_ball_in_plot() -> void:
 	SimClock.paused = true
 	dog.global_position = Vector3(-3.0, 0.05, -2.0)
+	# Over the low house walls into the yard, and from the yard at the fence.
 	for shot: Array in [[Vector3(0.0, 0.4, 3.2), Vector3(0.0, 1.5, 7.0)],
-			[Vector3(4.2, 0.4, 0.0), Vector3(7.0, 1.5, 0.0)]]:
+			[Vector3(4.2, 0.4, 0.0), Vector3(7.0, 1.5, 0.0)],
+			[Vector3(2.0, 0.4, 8.6), Vector3(0.5, 1.5, 7.0)],
+			[Vector3(9.6, 0.4, 2.0), Vector3(7.0, 1.5, 0.5)]]:
 		_place_ball(FLOOR_SPOT)
 		await frames(2)
 		hand.pick_from(ball)
@@ -199,8 +202,9 @@ func test_bounds_keep_ball_in_room() -> void:
 		hand.throw_item(shot[1])
 		await frames(600)
 		var at := _ball_at()
-		check(at.z < 4.0 and at.x < 5.0 and at.y > -0.5,
-				"thrown at the low wall, it stays in the room (%s)" % at)
+		check(at.z < 9.75 and at.x < 10.75 and at.y > -0.5,
+				"thrown hard, it stays in the plot (%s)" % at)
+		check(ball.is_reachable(), "and lands where a dog can get it (%s)" % at)
 
 
 func test_respawn() -> void:

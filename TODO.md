@@ -8,7 +8,7 @@ change. Edit the "Your call" column to change a decision; it's picked up next ti
 | # | What | How | Status |
 |---|---|---|---|
 | 1 | Merge the open pull request | Open https://github.com/ryanrhursh/Dogz3D/pull/3 and click "Merge pull request" | **Waiting for you** |
-| 2 | M3 windowed check on Windows | Run the game, click a dog twice for close-up: pet (drag), hand-feed (hold LMB on the bowl, let go at a dog's head), throw the ball (grab, flick). Drop a kibble on the table: dogs should ignore it. Note anything that feels off. | **Waiting for you** |
+| 2 | M3 windowed check on Windows | Run the game, click a dog twice for close-up: pet (drag), hand-feed (hold LMB on the bowl, let go at a dog's head), throw the ball (grab, flick). Drop a kibble on the table: dogs should ignore it. Also new: the yard (dogs wander out through the doorway in the house's south wall). Note anything that feels off. | **Waiting for you** |
 | 3 | Look over the *proposed* decisions below | Change any you don't like in "Your call"; leave the rest | Optional |
 
 ## Decisions
@@ -41,8 +41,8 @@ change. Edit the "Your call" column to change a decision; it's picked up next ti
 | M3 Hands | Steps 1-5 and wrap-up | Done |
 | M3 Hands | Windowed check on Windows | Waiting for you |
 | M4 Estate, economy, jobs | 1. Money and stock ledger, save format v4 | Done |
-| M4 | 2. Outdoor plot (yard, doorway, fence, gate) | Next |
-| M4 | 3. Buildings (data, placing, the six first types) | Planned |
+| M4 | 2. Outdoor plot (yard, doorway, fence, gate) | Done |
+| M4 | 3. Buildings (data, placing, the six first types) | Next |
 | M4 | 4. Build mode (B) | Planned |
 | M4 | 5. Supplies and shop | Planned |
 | M4 | 6. Farming (garden beds) | Planned |

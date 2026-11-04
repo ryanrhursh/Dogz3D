@@ -3,7 +3,7 @@
 A cozy life sim and town builder in a world of animals (see `docs/design.md`, roadmap in
 `docs/roadmap.md`).
 Current build: the gray box, a pack of capsule-shaped corgis with needs, personalities,
-relationships and utility-AI brains, living in a one-room diorama with a day/night cycle.
+relationships and utility-AI brains, living in a house with a small fenced yard and a day/night cycle.
 Click a dog twice for close-up mode, where your hand pets, hand-feeds and throws a ball.
 The town economy (plot, building, supplies, farming and jobs) is next.
 
@@ -77,8 +77,8 @@ Runs days of game time in seconds and prints a summary:
 godot --headless --fixed-fps 60 --path . -- --fresh --no-save --timescale=60 --quit-after-hours=48 --autofeed --autopet --seed=42 --log
 ```
 
-Reference result (seed 42, 48 h, attentive owner): idle 83, wander 20, chase_toy 14, drink 10,
-eat 10, sleep 7; no need fell below 47 except affection (32). With no owner, hunger and thirst
+Reference result (seed 42, 48 h, attentive owner): idle 69, wander 18, chase_toy 10, drink 10,
+eat 10, sleep 7; no need fell below 49 except affection (34). With no owner, hunger and thirst
 hit 0 by day 2.
 
 Swap `--autopet` for `--autohands` to have a simulated owner use the hand instead: it
